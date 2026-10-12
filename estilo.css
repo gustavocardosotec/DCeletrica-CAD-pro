@@ -1,0 +1,9 @@
+body{background:#eef2f6}
+#vL>div:first-child{background:linear-gradient(155deg,#0f2a43,#1b4f7a 60%,#f26b21 160%)}
+.btn{box-shadow:0 1px 2px #0002;transition:background .15s,transform .1s}.btn:active{transform:translateY(1px)}
+.in{transition:border-color .15s,box-shadow .15s}.in:focus{border-color:#f26b21;box-shadow:0 0 0 3px #f26b2133;outline:0}
+#gr>div{transition:box-shadow .2s,transform .2s}#gr>div:hover{box-shadow:0 10px 24px #0f2a4322;transform:translateY(-2px)}
+#vE>header,#vP>header{box-shadow:0 1px 6px #0001}
+.dd{max-height:70vh;overflow:auto}.it canvas{background:#f7f9fb;border-radius:5px;flex:none}
+#pp{max-height:80vh;overflow:auto}
+@media(max-width:700px){.btn{padding:5px 8px;font-size:12px}#hint{display:none}.dd{position:fixed;left:8px;right:8px;top:auto}}
