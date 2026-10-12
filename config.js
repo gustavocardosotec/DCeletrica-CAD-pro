@@ -1,7 +1,7 @@
 // ==========================================
 // CONFIGURAÇÃO E INICIALIZAÇÃO DO SUPABASE
 // ==========================================
-const SUPABASE_URL = "https://rqmhwkhhbzvfqcrcdlz.supabase.co";
+const SUPABASE_URL = "https://rqmhwkhhbhzvfqcrcdlz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxbWh3a2hoYmh6dmZxY3JjZGx6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE3NTk4OTMsImV4cCI6MjEwNzMzNTg5M30.cbRQsNmZtJDG8caS80JuMRDtp8dVDyKdteznxSGvOdQ";
 
 // Inicializa o cliente do Supabase de forma segura
@@ -64,7 +64,6 @@ async function fazerLogin(email, senha) {
     }
 
     alert("Login realizado com sucesso!");
-    // Redireciona ou atualiza a tela para a área logada
     window.location.href = "index.html"; 
     return data;
   } catch (err) {
@@ -88,9 +87,8 @@ async function fazerLogout() {
 // EVENTOS DOS BOTÕES DA TELA
 // ==========================================
 document.addEventListener("DOMContentLoaded", () => {
-  // Ajuste os IDs abaixo conforme o HTML do seu projeto (ex: ids dos inputs de email e senha, e dos botões)
-  const btnCadastrar = document.getElementById("btn-cadastrar"); // Troque pelo ID do seu botão de cadastro
-  const btnLogin = document.getElementById("btn-login");         // Troque pelo ID do seu botão de login
+  const btnCadastrar = document.getElementById("btn-cadastrar"); // ID do botão de cadastro no HTML
+  const btnLogin = document.getElementById("btn-login");         // ID do botão de login no HTML
 
   if (btnCadastrar) {
     btnCadastrar.addEventListener("click", (e) => {
