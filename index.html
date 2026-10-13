@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>DCeletrica CAD Pro 3.0</title>
+<title>DCeletrica CAD Pro 3.1</title>
 <script src="https://cdn.tailwindcss.com"></script><script src="config.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script><link rel="stylesheet" href="estilo.css">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"></head>
 <body>
@@ -28,7 +28,7 @@
 </section>
 <!-- PROJETOS -->
 <section id="vP" class="hidden min-h-screen">
- <header class="top"><span class="logo"><i>⚡</i>DCeletrica <span style="color:#f26b21">CAD Pro 3.0</span></span><span id="us" class="chip"></span><button id="bOut" class="btn ghost">⎋<span class="lb">&nbsp;Sair</span></button></header>
+ <header class="top"><span class="logo"><i>⚡</i>DCeletrica <span style="color:#f26b21">CAD Pro 3.1</span></span><span id="us" class="chip"></span><button id="bOut" class="btn ghost">⎋<span class="lb">&nbsp;Sair</span></button></header>
  <div class="max-w-5xl mx-auto p-6"><div class="flex items-center mb-6 gap-3"><div><h2 class="text-3xl font-extrabold">Meus projetos</h2><p class="text-sm" style="color:#64748b">Abra um projeto ou comece um novo.</p></div><button id="bNew" class="btn or ml-auto py-2.5 px-5">＋ Novo projeto</button></div>
  <div id="gr" class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"></div></div>
 </section>
@@ -47,7 +47,7 @@
   <div id="hint" class="absolute left-3 bottom-3 text-xs px-3 py-2 pointer-events-none max-w-[60%]"></div><button id="bAd" class="btn or absolute right-3 bottom-3 shadow-lg">＋ Inserir no centro</button><button id="bEnd" class="btn or absolute left-3 bottom-14 shadow-lg" style="display:none">✓ Concluir</button>
   <div id="vw" class="hidden pop absolute left-3 top-3 z-10" style="width:210px"><b class="text-sm">Exibir na tela</b>
    <label><input type="checkbox" data-s="g"> Grade</label><label><input type="checkbox" data-s="r"> Potência e circuito</label><label><input type="checkbox" data-s="t"> Nomes dos cômodos / textos</label><label><input type="checkbox" data-s="f"> Fiação / eletrodutos</label>
-   <button id="bMd" class="btn ghost w-full mt-2"></button></div>
+   <div class="text-xs mt-2" style="line-height:1.7"><b>━━</b> Tronco ilum./TUG<br><b>╍╍</b> TUE dedicado<br>── Ramal / derivação</div><button id="bMd" class="btn ghost w-full mt-2"></button></div>
   <aside id="pp" class="hidden absolute right-3 top-3 w-60"></aside></main>
 </section>
 <div id="mqd" class="modal full hidden"><div>
@@ -57,7 +57,7 @@
  <b class="text-sm block mt-4">Quadro (QDC)</b>
  <div class="grid grid-cols-2 gap-2"><label>Nome<input id="qn" class="in mt-1"></label><label>Disj. geral (A)<input id="qg" type="number" class="in mt-1"></label><label>IDR (A)<input id="qi" type="number" class="in mt-1"></label><label>Cabo geral (mm²)<input id="qk" class="in mt-1"></label></div>
  <label>DPS<input id="qd" class="in mt-1"></label>
- <b class="text-sm block mt-4">Circuitos (edição manual)</b><div id="qc"></div>
+ <div class="flex items-center mt-4"><b class="text-sm">Circuitos (edição manual)</b><button id="qr" class="btn ghost ml-auto">⇅ Renumerar 1…N</button></div><div id="qc"></div>
  <button id="qs" class="btn or w-full mt-4 py-3">Aplicar e fechar</button></div></div>
 <div id="sh" class="modal sheet hidden"><div><b id="sht" class="text-sm"></b>
  <div class="grid grid-cols-2 gap-2 mt-3"><button class="btn ghost py-3" data-a="bDu">⧉ Duplicar</button><button class="btn ghost py-3" data-a="bRo">⟳ Girar</button><button class="btn ghost py-3" data-a="qd">⚙ Circuito / quadro</button><button class="btn danger py-3" data-a="del">🗑 Excluir</button></div>
@@ -114,7 +114,7 @@ async function list(){
 $('bNew').onclick=async()=>{const n=await ask('Nome do projeto:',{inp:1,def:'Casa nova'});if(!n)return;const r=await DB('',{method:'POST',body:JSON.stringify({nome:n,dados:{items:[],v:{x:80,y:80,z:1}}})});if(r&&r[0])open(r[0])};
 
 /* ===== Editor ===== */
-function open(p){cur=p.id;S=p.dados;S.items=S.items||[];S.v=S.v||{x:80,y:80,z:1};S.sh=Object.assign({g:1,r:1,t:1,f:1},S.sh);S.cfg=Object.assign({fase:127,forn:'mono'},S.cfg);S.q=Object.assign({},DQ,S.q);S.ov=S.ov||{};document.querySelectorAll('[data-s]').forEach(i=>i.checked=!!S.sh[i.dataset.s]);$('nm').value=p.nome;sel=null;hist=[JSON.stringify(S.items)];$('bMd').textContent='Medidas: '+(S.nomed?'não':'sim');pp(1);show('vE');draw();status('Aberto');markTool()}
+function open(p){cur=p.id;S=p.dados;S.items=S.items||[];S.v=S.v||{x:80,y:80,z:1};S.sh=Object.assign({g:1,r:1,t:1,f:1},S.sh);S.cfg=Object.assign({fase:127,forn:'mono'},S.cfg);S.q=Object.assign({},DQ,S.q);S.ov=S.ov||{};S.fca=S.fca||{};document.querySelectorAll('[data-s]').forEach(i=>i.checked=!!S.sh[i.dataset.s]);$('nm').value=p.nome;sel=null;hist=[JSON.stringify(S.items)];$('bMd').textContent='Medidas: '+(S.nomed?'não':'sim');pp(1);show('vE');draw();status('Aberto');markTool()}
 $('bBk').onclick=async()=>{await save();list()};
 $('bSv').onclick=()=>save();$('bUn').onclick=undo;
 $('bMd').onclick=()=>{S.nomed=!S.nomed;$('bMd').textContent='Medidas: '+(S.nomed?'não':'sim');auto();draw()};
@@ -189,15 +189,40 @@ function sym(c,k,col,t){
   case 'porta':{const n=t.len||90;c.save();if(t.fl)c.scale(-1,1);if(t.fv)c.scale(1,-1);c.fillStyle='#fff';c.fillRect(-n/2,-3,n,6);L(-n/2,0,-n/2,n);c.lineWidth=1;c.beginPath();c.arc(-n/2,0,n,0,Math.PI/2);c.stroke();c.restore();break}
   case 'janela':{const n=t.len||90;c.fillStyle='#fff';c.fillRect(-n/2,-3,n,6);c.lineWidth=1.4;L(-n/2,-3,n/2,-3);L(-n/2,3,n/2,3);L(-n/2,0,n/2,0);break}}
 }
+/* Eletrodutos sempre retos: todo trecho inclinado vira dois trechos ortogonais. Trechos sobrepostos são afastados em faixas paralelas; desvios e cantos com curva leve */
+const ortg=p=>{const r=[p[0]];for(let i=1;i<p.length;i++){const a=p[i-1],b=p[i];if(Math.abs(a[0]-b[0])>2&&Math.abs(a[1]-b[1])>2)r.push([b[0],a[1]]);r.push(b)}return r};
+function lanes(){const M=new Map(),sg=[];
+ S.items.forEach((f,fi)=>{if(f.t!='fio')return;const pp=ortg(f.pts);M.set(f,new Array(pp.length-1).fill(0));pp.forEach((q,i)=>{if(!i)return;const a=pp[i-1],dx=q[0]-a[0],dy=q[1]-a[1];
+  if(Math.abs(dx)<4&&Math.abs(dy)>=4)sg.push({f,i:i-1,o:1,c:(a[0]+q[0])/2,lo:Math.min(a[1],q[1]),hi:Math.max(a[1],q[1]),fi});
+  else if(Math.abs(dy)<4&&Math.abs(dx)>=4)sg.push({f,i:i-1,o:0,c:(a[1]+q[1])/2,lo:Math.min(a[0],q[0]),hi:Math.max(a[0],q[0]),fi})})});
+ [0,1].forEach(o=>{const cl=[];sg.filter(s=>s.o==o).sort((a,b)=>a.c-b.c).forEach(s=>{const g=cl[cl.length-1];if(g&&s.c-g[g.length-1].c<=4)g.push(s);else cl.push([s])});
+  cl.forEach(g=>{if(g.length<2)return;const ov=(a,b)=>a.f!==b.f&&Math.min(a.hi,b.hi)-Math.max(a.lo,b.lo)>6;
+   g.sort((a,b)=>a.fi-b.fi);g.forEach(s=>{const u=new Set(g.filter(t=>t.ln!==undefined&&ov(s,t)).map(t=>t.ln));let n=0;while(u.has(n))n++;s.ln=n});
+   const seen=new Set();g.forEach(s=>{if(seen.has(s))return;const cp=[s];seen.add(s);for(let k=0;k<cp.length;k++)g.forEach(t=>{if(!seen.has(t)&&ov(cp[k],t)){seen.add(t);cp.push(t)}});
+    const m=1+Math.max(...cp.map(t=>t.ln));cp.forEach(t=>{M.get(t.f)[t.i]=(t.ln-(m-1)/2)*6})})})});
+ return M}
+const offs=(p,dd)=>{if(!dd||!dd.some(x=>x))return p;const vec=[],or=[];dd.forEach((d,i)=>{const a=p[i],b=p[i+1],dx=Math.abs(b[0]-a[0]),dy=Math.abs(b[1]-a[1]),o=dx<4&&dy>=4?1:dy<4&&dx>=4?0:2;or.push(o);vec.push(o==0?[0,d]:o==1?[d,0]:[0,0])});
+ return p.map((q,i)=>{const a=vec[i-1],b=vec[i];if(!a)return[q[0]+b[0],q[1]+b[1]];if(!b)return[q[0]+a[0],q[1]+a[1]];if(or[i-1]==or[i])return[q[0]+(a[0]+b[0])/2,q[1]+(a[1]+b[1])/2];return[q[0]+a[0]+b[0],q[1]+a[1]+b[1]]})};
+function wpath(c,E,P){const n=P.length,D=(a,b)=>Math.hypot(b[0]-a[0],b[1]-a[1]),U=(a,b)=>{const l=D(a,b)||1;return[(b[0]-a[0])/l,(b[1]-a[1])/l]};
+ const s0=Math.min(14,D(P[0],P[1])*.4),s1=Math.min(14,D(P[n-2],P[n-1])*.4),o0=D(E[0],P[0])>.8,o1=D(E[n-1],P[n-1])>.8;
+ c.beginPath();c.moveTo(E[0][0],E[0][1]);
+ if(o0){const u=U(P[0],P[1]);c.bezierCurveTo(E[0][0]+u[0]*s0*.9,E[0][1]+u[1]*s0*.9,P[0][0],P[0][1],P[0][0]+u[0]*s0,P[0][1]+u[1]*s0)}else c.lineTo(P[0][0],P[0][1]);
+ for(let i=1;i<n-1;i++){const r=Math.min(7,D(P[i-1],P[i])*.45,D(P[i],P[i+1])*.45);c.arcTo(P[i][0],P[i][1],P[i+1][0],P[i+1][1],r)}
+ if(o1){const u=U(P[n-2],P[n-1]);c.lineTo(P[n-1][0]-u[0]*s1,P[n-1][1]-u[1]*s1);c.bezierCurveTo(P[n-1][0],P[n-1][1],E[n-1][0]-u[0]*s1*.9,E[n-1][1]-u[1]*s1*.9,E[n-1][0],E[n-1][1])}else c.lineTo(P[n-1][0],P[n-1][1])}
 function items(c,clean){
- const SEL='#2563eb',V=clean?{g:1,r:1,t:1,f:1}:S.sh;
+ const LM=lanes(),SEL='#2563eb',V=clean?{g:1,r:1,t:1,f:1}:S.sh;
  S.items.forEach(t=>{const on=!clean&&t===sel,col=on?SEL:'#000';
   if(t.t=='room'){c.strokeStyle=col;c.lineWidth=4;c.lineJoin='miter';t.h?c.strokeRect(t.x,t.y,t.w,t.h):(c.beginPath(),c.moveTo(t.x,t.y),c.lineTo(t.x+t.w,t.y),c.stroke());
    c.fillStyle=on?SEL:'#51627a';c.font='12px sans-serif';c.textAlign='center';if(!S.nomed)c.fillText((t.w/U).toFixed(2)+' m',t.x+t.w/2,t.y-8);
    if(t.h&&!S.nomed){c.save();c.translate(t.x+t.w+14,t.y+t.h/2);c.rotate(Math.PI/2);c.fillText((t.h/U).toFixed(2)+' m',0,0);c.restore()}
    if(on)[[t.x,t.y],[t.x+t.w,t.y],[t.x,t.y+t.h],[t.x+t.w,t.y+t.h]].forEach(([a,b])=>{c.fillStyle='#fff';c.strokeStyle=SEL;c.lineWidth=2;c.fillRect(a-5,b-5,10,10);c.strokeRect(a-5,b-5,10,10)})}
   else if(t.t=='cota'){if(!S.nomed){const[a,b]=[t.a,t.b],m=[(a[0]+b[0])/2,(a[1]+b[1])/2];c.strokeStyle=on?SEL:'#0b6e4f';c.lineWidth=1.2;c.beginPath();c.moveTo(...a);c.lineTo(...b);c.stroke();[a,b].forEach(q=>{c.beginPath();c.arc(q[0],q[1],3,0,7);c.stroke()});c.fillStyle=c.strokeStyle;c.font='bold 12px sans-serif';c.textAlign='center';c.fillText((Math.hypot(b[0]-a[0],b[1]-a[1])/U).toFixed(2)+' m',m[0],m[1]-6)}}
-  else if(t.t=='fio'){if(!V.f&&t!==sel)return;c.strokeStyle=col;c.lineWidth=1.6;c.beginPath();t.pts.forEach(([a,b],i)=>i?c.lineTo(a,b):c.moveTo(a,b));c.stroke()}
+  else if(t.t=='fio'){if(!V.f&&t!==sel)return;const tp=t.tp,k=on?SEL:'#000';
+   c.strokeStyle=k;c.lineWidth=tp=='tr'?2.6:tp=='tue'?2:t.gen?1.2:1.6;c.lineJoin='round';c.setLineDash(tp=='tue'?[10,5]:[]);
+   const E=ortg(t.pts),P=offs(E,LM.get(t));wpath(c,E,P);c.stroke();c.setLineDash([]);
+   if(tp=='tr'||tp=='tue'){c.fillStyle=k;[E[0],E[E.length-1]].forEach(q=>{c.beginPath();c.arc(q[0],q[1],3,0,7);c.fill()})}
+   if(t.lb&&V.r&&P.length>1){let bi=1,bl=0;P.forEach((q,i)=>{if(!i)return;const l=Math.hypot(q[0]-P[i-1][0],q[1]-P[i-1][1]);if(l>bl){bl=l;bi=i}});const a=P[bi-1],b=P[bi],mx_=(a[0]+b[0])/2,my_=(a[1]+b[1])/2;
+    c.font='bold 10px sans-serif';c.textAlign='center';const w=c.measureText(t.lb).width+8;c.fillStyle='#fffffff0';c.fillRect(mx_-w/2,my_-8,w,15);c.strokeStyle=k;c.lineWidth=.8;c.strokeRect(mx_-w/2,my_-8,w,15);c.fillStyle=k;c.fillText(t.lb,mx_,my_+3)}}
   else if(t.t=='txt'){if(!V.t&&!on)return;c.fillStyle=col;c.font=(t.big?'bold 16px':'14px')+' sans-serif';c.textAlign='center';c.fillText(t.s,t.x,t.y+5)}
   else{c.save();c.translate(t.x,t.y);if(t.k!='luz'&&!AUT.includes(t.k))c.rotate(t.rot*Math.PI/180);sym(c,t.k,col,t);c.restore();
    const l=['is','i3','i4','camp','tec'].includes(t.k)?t.cmd:t.k=='tue'?`${t.p} ${t.v}V -${t.c}- ${t.nm||'TUE'}`:['tb','tm','ta','td'].includes(t.k)?t.p+' '+t.cmd:'';
@@ -240,7 +265,7 @@ const dseg=(p,a,b)=>{const l=(b[0]-a[0])**2+(b[1]-a[1])**2||1,u=Math.max(0,Math.
 function hit(p){const r=(COARSE?16:8)/S.v.z;
  for(let i=S.items.length-1;i>=0;i--){const t=S.items[i];
   if(t.t=='sym'&&(DRK.includes(t.k)?dhit(p,t):Math.hypot(p.x-t.x,p.y-t.y)<(COARSE?26:16)))return t;if(t.t=='txt'&&Math.abs(p.x-t.x)<t.s.length*4.5+4&&Math.abs(p.y-t.y)<11)return t}
- for(const t of S.items)if(t.t=='cota'&&!S.nomed&&dseg(p,t.a,t.b)<r)return t;for(const t of S.items)if(t.t=='fio'&&t.pts.some((q,i)=>i&&dseg(p,t.pts[i-1],q)<r))return t;
+ for(const t of S.items)if(t.t=='cota'&&!S.nomed&&dseg(p,t.a,t.b)<r)return t;for(const t of S.items)if(t.t=='fio'&&ortg(t.pts).some((q,i,A)=>i&&dseg(p,A[i-1],q)<r))return t;
  for(let i=S.items.length-1;i>=0;i--){const t=S.items[i];if(t.t!='room')continue;if(p.x>=t.x-r&&p.x<=t.x+t.w+r&&p.y>=t.y-r&&p.y<=t.y+t.h+r)return t}
  return null}
 const corner=p=>{if(!sel||sel.t!='room')return -1;const r=(COARSE?20:9)/S.v.z;return[[sel.x,sel.y],[sel.x+sel.w,sel.y],[sel.x,sel.y+sel.h],[sel.x+sel.w,sel.y+sel.h]].findIndex(([a,b])=>Math.abs(p.x-a)<r&&Math.abs(p.y-b)<r)};
@@ -271,7 +296,7 @@ addEventListener('mousemove',e=>{if(!drag)return;const p=wpt(e);
 addEventListener('mouseup',()=>{const d=drag;drag=null;cv.style.cursor='';if(!d)return;if(d.m!='pan')auto()});
 cv.addEventListener('wheel',e=>{e.preventDefault();const p=wpt(e),z=Math.min(3,Math.max(.3,S.v.z*(e.deltaY<0?1.1:.9)));S.v.z=z;S.v.x=p.sx-p.x*z;S.v.y=p.sy-p.y*z;draw()},{passive:false});
 addEventListener('keydown',e=>{if(e.key=='Escape'){wire=null;if(cw){S.items=S.items.filter(i=>i!==cw);cw=null;draw()}}if((e.ctrlKey||e.metaKey)&&e.key=='z'){e.preventDefault();undo()}if(['INPUT','SELECT'].includes(e.target.tagName)||$('vE').classList.contains('hidden'))return;if((e.key=='Delete'||e.key=='Backspace')&&sel)del()});
-function del(){S.items=S.items.filter(i=>i!==sel);sel=null;wire=null;pp(1);auto();draw()}
+function del(){const c=sel&&sel.t=='sym'?sel.c:null;S.items=S.items.filter(i=>i!==sel);if(c&&!S.items.some(i=>i.t=='sym'&&i.c==c))renum();sel=null;wire=null;pp(1);auto();draw()}
 
 /* ===== Painel de propriedades ===== */
 function pp(rb){const el=$('pp');if(!sel){el.classList.add('hidden');return}el.classList.remove('hidden');
@@ -296,7 +321,7 @@ const BR=[10,16,20,25,32,40,50,63],SEC=[1.5,2.5,4,6,10,16,25,35],IZ={1.5:17.5,2.
 /* NBR 5410: seção mínima 1,5 mm² (iluminação) e 2,5 mm² (tomadas e TUE); disjuntor com Ib <= In <= Iz
    (cobre, PVC 70 °C, método B1, 2 condutores carregados: 1,5=17,5A  2,5=24A  4=32A  6=41A  10=57A  16=76A) */
 /* NBR 5410: Ib=P/V; In>=Ib*FS (folga 20%); Iz*FD>=In (agrupamento -10%); mín. 1,5 mm² (luz) e 2,5 mm² (TUG/TUE) */
-function dim(o){const Ib=o.w/o.v*FS,mb=o.k=='luz'||o.k=='tue'?10:20,ms=o.k=='luz'?1.5:2.5,b=BR.find(x=>x>=Math.max(Ib,mb))||63,s=SEC.find(x=>x>=ms&&IZ[x]*FD>=b)||35;return{b,cabo:s}}
+function dim(o){const Ib=o.w/o.v*FS,mb=o.k=='luz'||o.k=='tue'?10:20,ms=o.k=='luz'?1.5:2.5,b=BR.find(x=>x>=Math.max(Ib,mb))||63,s=SEC.find(x=>x>=ms&&IZ[x]*(o.fca||FD)>=b)||35;return{b,cabo:s}}
 const VG=()=>S.cfg.forn=='bi'&&S.cfg.fase==127?'127/220':String(S.cfg.fase),FG0=()=>S.cfg.forn=='bi'?'bifásico':'monofásico',fas=o=>S.cfg.forn=='bi'&&o.v>S.cfg.fase?'bifásico':'monofásico',AV=()=>S.cfg.forn=='bi'&&S.cfg.fase==127?[127,220]:[+S.cfg.fase],V0=()=>String(S.cfg.fase);
 function fixTUE(){S.items.forEach(t=>{if(t.t=='sym'&&['tb','tm','ta','td'].includes(t.k)&&(parseFloat(t.p)||0)>=1000){t.k='tue';t.nm=t.nm||'Carga dedicada'}});let mx=0;const n={};
  S.items.forEach(t=>{if(t.t=='sym'&&PW[t.k]!==undefined&&t.c){mx=Math.max(mx,+t.c||0);n[t.c]=(n[t.c]||0)+1}});
@@ -304,21 +329,24 @@ function fixTUE(){S.items.forEach(t=>{if(t.t=='sym'&&['tb','tm','ta','td'].inclu
 const cabS=o=>`${fas(o)=='bifásico'?2:1}#${o.cabo}(${o.cabo})mm²`;
 function circs(){const m={},ov=S.ov||{},al=AV();
  S.items.filter(t=>t.t=='sym'&&PW[t.k]!==undefined&&t.c).forEach(t=>{const o=m[t.c]=m[t.c]||{n:t.c,w:0,v:0,k:t.k};o.w+=parseFloat(t.p)||0;o.v=Math.max(o.v,+t.v||0);if(t.k=='luz')o.k='luz';else if(t.k=='tue'&&o.k!='luz')o.k='tue';if(t.nm)o.nm=t.nm;if(t.dsc)o.dsc=t.dsc});
- return Object.values(m).sort((a,b)=>a.n-b.n).map(o=>{const x=ov[o.n]||{},v0=x.v!=null?+x.v:o.v,v=al.includes(v0)?v0:+S.cfg.fase,w=x.w!=null?+x.w:o.w,a=dim({...o,v,w}),b=x.b!=null?+x.b:a.b,cabo=x.cabo!=null?+x.cabo:a.cabo;
-  return{...o,v,w,b,cabo,d:x.d!=null?x.d:o.dsc||(o.k=='luz'?'Iluminação':o.k=='tue'?(o.nm||'TUE'):'TUG'),ok:IZ[cabo]*FD>=b}})}
+ return Object.values(m).sort((a,b)=>a.n-b.n).map(o=>{const x=ov[o.n]||{},v0=x.v!=null?+x.v:o.v,v=al.includes(v0)?v0:+S.cfg.fase,w=x.w!=null?+x.w:o.w,fc=(S.fca||{})[o.n],a=dim({...o,v,w,fca:fc}),b=x.b!=null?+x.b:a.b,cabo=x.cabo!=null?+x.cabo:a.cabo;
+  return{...o,v,w,b,cabo,d:x.d!=null?x.d:o.dsc||(o.k=='luz'?'Iluminação':o.k=='tue'?(o.nm||'TUE'):'TUG'),ok:IZ[cabo]*(fc||FD)>=b}})}
 /* ===== Quadro, concessionária e edição manual ===== */
 const BRo=n=>BR.includes(n)?BR:[...BR,n].sort((a,b)=>a-b),opt=(a,s)=>a.map(x=>`<option ${x==s?'selected':''}>${x}</option>`).join('');
 function renderQd(){const cs=circs(),al=AV();$('qf').value=S.cfg.fase;$('qo').value=S.cfg.forn;[['qn','nome'],['qg','ig'],['qi','idr'],['qk','cabo'],['qd','dps']].forEach(([i,k])=>$(i).value=S.q[k]);
- $('qc').innerHTML=cs.length?cs.map(o=>`<div class="qcc ${o.ok?'':'bad'}" data-n="${esc(o.n)}"><div class="flex items-center gap-2"><b>Circ. ${esc(o.n)}</b><span class="text-xs" style="color:#64748b">${o.k=='luz'?'Iluminação':o.k=='tue'?'TUE':'TUG'}</span>${o.ok?'':'<span class="text-xs" style="color:#b42318">⚠ cabo menor que o disjuntor</span>'}<button class="btn ghost ml-auto" data-r="${esc(o.n)}">↺ Auto</button></div>
+ $('qc').innerHTML=cs.length?cs.map(o=>`<div class="qcc ${o.ok?'':'bad'}" data-n="${esc(o.n)}"><div class="flex items-center gap-2"><b>Circ. ${esc(o.n)}</b><span class="text-xs" style="color:#64748b">${o.k=='luz'?'Iluminação':o.k=='tue'?'TUE':'TUG'}${S.fca&&S.fca[o.n]?' • FCA '+S.fca[o.n]:''}</span>${o.ok?'':'<span class="text-xs" style="color:#b42318">⚠ cabo menor que o disjuntor</span>'}<button class="btn ghost ml-auto" data-r="${esc(o.n)}">↺ Auto</button></div>
  <label>Descrição<input class="in mt-1" data-k="d" value="${esc(o.d)}"></label>
- <div class="grid grid-cols-2 gap-2"><label>Tensão (V)<select class="in mt-1" data-k="v">${opt(al,o.v)}</select></label><label>Potência (W/VA)<input class="in mt-1" data-k="w" type="number" min="0" value="${Math.round(o.w)}"></label>
+ <div class="grid grid-cols-2 gap-2"><label>Nº do circuito<input class="in mt-1" data-k="n" type="number" min="1" value="${esc(o.n)}"></label><label>Tensão (V)<select class="in mt-1" data-k="v">${opt(al,o.v)}</select></label><label>Potência (W/VA)<input class="in mt-1" data-k="w" type="number" min="0" value="${Math.round(o.w)}"></label>
  <label>Disjuntor (A)<select class="in mt-1" data-k="b">${opt(BRo(o.b),o.b)}</select></label><label>Cabo (mm²)<select class="in mt-1" data-k="cabo">${opt(SEC,o.cabo)}</select></label></div></div>`).join(''):'<p class="text-sm" style="color:#64748b">Nenhum circuito ainda. Gere a elétrica ou numere os pontos.</p>'}
+function mv(m){S.items.forEach(t=>{if(t.t=='sym'&&t.c&&m[t.c]!=null)t.c=m[t.c]});const f=o=>{const r={};Object.keys(o||{}).forEach(k=>r[m[k]!=null?m[k]:k]=o[k]);return r};S.ov=f(S.ov);S.fca=f(S.fca)}
+function renum(){const ns=[...new Set(S.items.filter(t=>t.t=='sym'&&PW[t.k]!==undefined&&t.c).map(t=>t.c))].sort((a,b)=>a-b),m={};ns.forEach((n,i)=>m[n]=String(i+1));mv(m)}
 function openQd(n){renderQd();$('mqd').classList.remove('hidden');if(n){const e=document.querySelector(`#qc [data-n="${n}"]`);e&&e.scrollIntoView({block:'center'})}}
 $('bQd').onclick=()=>openQd();$('qx').onclick=$('qs').onclick=()=>{fixTUE();$('mqd').classList.add('hidden');pp(1);draw();auto()};
 $('qf').onchange=$('qo').onchange=()=>{S.cfg={fase:+$('qf').value,forn:$('qo').value};const a=AV();S.items.forEach(t=>{if(t.t=='sym'&&PW[t.k]!==undefined&&!a.includes(+t.v))t.v=V0()});renderQd();auto();draw()};
 [['qn','nome'],['qg','ig'],['qi','idr'],['qk','cabo'],['qd','dps']].forEach(([i,k])=>$(i).oninput=()=>{S.q[k]=$(i).value;auto()});
-$('qc').addEventListener('change',e=>{const k=e.target.dataset.k,c=e.target.closest('[data-n]'),n=c&&c.dataset.n;if(!k||!n)return;const ov=S.ov[n]=S.ov[n]||{};let v=e.target.value;if(k!='d')v=parseFloat(v)||0;ov[k]=v;
+$('qc').addEventListener('change',e=>{const k=e.target.dataset.k,c=e.target.closest('[data-n]'),n=c&&c.dataset.n;if(!k||!n)return;if(k=='n'){const m=String(parseInt(e.target.value)||0);if(m!='0'&&m!=n)mv({[n]:m,[m]:n});renderQd();auto();draw();return}const ov=S.ov[n]=S.ov[n]||{};let v=e.target.value;if(k!='d')v=parseFloat(v)||0;ov[k]=v;
  if(k=='v')S.items.forEach(t=>{if(t.t=='sym'&&t.c==n)t.v=String(v)});if(k=='v'||k=='w'){delete ov.b;delete ov.cabo}renderQd();auto();draw()});
+$('qr').onclick=()=>{renum();renderQd();auto();draw()};
 $('qc').addEventListener('click',e=>{const n=e.target.dataset.r;if(n){delete S.ov[n];renderQd();auto()}});
 const mctx=document.createElement('canvas').getContext('2d');
 function qdcGeo(cs){const n=Math.max(cs.length,1),RH=80,Bt=50,ys=[...Array(n)].map((_,i)=>Bt+84+i*RH),ym=(ys[0]+ys[n-1])/2,bot=Math.max(ys[n-1]+52,ym+172),Rx=760;
@@ -374,9 +402,9 @@ async function gerar(){
   lz.forEach((t,j)=>{const a=j?lz[j-1]:sw;S.items.push({t:'fio',gen:1,pts:[[a.x,a.y],[t.x,t.y]],ids:[a.id,t.id]})});const OUT=[];
   const wet=['cozinha','banheiro','servico'].includes(tp),nt=tp=='banheiro'?1:Math.max(1,Math.ceil(per/(wet?3.5:5)));
   for(let j=0;j<nt;j++){const t=put(wet?'tm':'tb',(j+.5)*Pm/nt,{p:(wet&&j<3?600:100)+'VA'});(tp=='cozinha'||tp=='servico'?Wt:D).push(t);OUT.push(t)}
-  if(tp=='banheiro'){const t=put('tue',Pm*.3,{p:'5500W',nm:'Chuveiro',v:AV().includes(220)?'220':V0()});T.push(t);OUT.push(t)}
-  if(ac&&(tp=='quarto'||tp=='sala')){const t=put('tue',Pm*.62,{p:'1200W',nm:'Ar cond.',v:V0()});T.push(t);OUT.push(t)}
-  if(tp=='cozinha'){const t=put('tue',Pm*.5,{p:'1500W',nm:'Airfryer',v:V0()});T.push(t);OUT.push(t)}
+  if(tp=='banheiro'){const t=put('tue',Pm*.3,{p:'5500W',nm:'Chuveiro',v:AV().includes(220)?'220':V0()});T.push(t)}
+  if(ac&&(tp=='quarto'||tp=='sala')){const t=put('tue',Pm*.62,{p:'1200W',nm:'Ar cond.',v:V0()});T.push(t)}
+  if(tp=='cozinha'){const t=put('tue',Pm*.5,{p:'1500W',nm:'Airfryer',v:V0()});T.push(t)}
   chain(lz,OUT);
   if(i==qi)Q=put('qgd',60,{c:''});
  });
@@ -389,25 +417,44 @@ async function gerar(){
   if(!v)return null;
   const free=(px,py)=>!S.items.some(t=>t.t=='sym'&&Math.hypot(t.x-px,t.y-py)<(DRK.includes(t.k)?(t.len||90)/2+12:26));
   const mid=(v.lo+v.hi)/2;let q=mid;for(let j=0;j<40;j++){const c=mid+(j%2?-1:1)*Math.ceil(j/2)*20;if(c<v.lo+20||c>v.hi-20)continue;if(free(v.h?c:v.w,v.h?v.w:c)){q=c;break}}
-  return v.h?[q,v.w]:[v.w,q]};
+  return v.h?[q,v.w,1]:[v.w,q,0]};
  const inT=[qi],ord=[qi],ED=[];
  while(inT.length<mn){let bs=null;
   for(const a of inT)for(let b=0;b<mn;b++){if(inT.includes(b))continue;const P=shared(rs[a],rs[b]);if(!P)continue;const d=Math.hypot(mx(rs[a])-mx(rs[b]),my(rs[a])-my(rs[b]));if(!bs||d<bs.d)bs={a,b,P,d}}
   if(!bs)for(const a of inT)for(let b=0;b<mn;b++){if(inT.includes(b))continue;const d=Math.hypot(mx(rs[a])-mx(rs[b]),my(rs[a])-my(rs[b]));if(!bs||d<bs.d)bs={a,b,P:null,d}}
   inT.push(bs.b);ord.push(bs.b);ED.push(bs)}
- ED.forEach(({a,b,P})=>{const pa=P||[mx(rs[b]),my(rs[b])],pb=P||[mx(rs[a]),my(rs[a])],A=near(HB[a],pa[0],pa[1]),B=near(HB[b],pb[0],pb[1]);
-  S.items.push({t:'fio',gen:1,pts:P?[[A.x,A.y],P,[B.x,B.y]]:[[A.x,A.y],[B.x,B.y]],ids:P?[A.id,null,B.id]:[A.id,B.id]})});
- S.items.push({t:'fio',gen:1,...cc([Q,near(HB[qi],Q.x,Q.y)])});
+ /* v3.1: eletrodutos como em obra. Cada TUE sai do QDC em eletroduto exclusivo; iluminação/TUG saem em 2-3 troncos por zona; traçado ortogonal atravessando a parede perpendicularmente */
+ const par={};ED.forEach(e=>par[e.b]=e);const pth=i=>{const L=[];while(i!=qi){L.unshift(par[i]);i=par[i].a}return L};
+ const ortho=A=>{const R=[A[0]];for(let k=1;k<A.length;k++){const p=A[k-1],q=A[k];let c=null;
+   if(Math.abs(p.x-q.x)>3&&Math.abs(p.y-q.y)>3){if(p.o===0)c={x:q.x,y:p.y};else if(p.o===1)c={x:p.x,y:q.y};else if(q.o===0)c={x:p.x,y:q.y};else if(q.o===1)c={x:q.x,y:p.y};else c={x:q.x,y:p.y}}
+   if(c)R.push(c);R.push(q)}return{pts:R.map(q=>[q.x,q.y]),ids:R.map(q=>q.id||null)}};
+ const route=(i,e)=>{const A=[{x:Q.x,y:Q.y,id:Q.id}];pth(i).forEach(({b,P})=>A.push(P?{x:P[0],y:P[1],o:P[2]}:{x:mx(rs[b]),y:my(rs[b])}));A.push({x:e.x,y:e.y,id:e.id});return ortho(A)};
+ const TR=[],QL=[];
+ T.forEach(t=>{const f={t:'fio',gen:1,tp:'tue',...route(RM.get(t),t)};S.items.push(f);TR.push({f,t});QL.push(f)});
+ const k=mn>1?Math.min(3,mn):1,sd=[qi];
+ while(sd.length<k){let bi=-1,bd=-1;for(let i=0;i<mn;i++){if(sd.includes(i))continue;const d=Math.min(...sd.map(s=>Math.hypot(mx(rs[i])-mx(rs[s]),my(rs[i])-my(rs[s]))));if(d>bd){bd=d;bi=i}}sd.push(bi)}
+ const cl=sd.map(()=>[]);for(let i=0;i<mn;i++){let b=0,bd=1e9;sd.forEach((s,j)=>{const d=Math.hypot(mx(rs[i])-mx(rs[s]),my(rs[i])-my(rs[s]));if(d<bd){bd=d;b=j}});cl[b].push(i)}
+ sd.forEach((s,j)=>{const M=cl[j],pl=pth(s),lp=pl.length?pl[pl.length-1].P:null,rf=lp?{x:lp[0],y:lp[1]}:Q,f0={t:'fio',gen:1,tp:'tr',...route(s,near(HB[s],rf.x,rf.y))};S.items.push(f0);TR.push({f:f0,rooms:M});QL.push(f0);
+  const inC=[s],E=[];
+  while(inC.length<M.length){let bs=null;for(const a of inC)for(const b of M){if(inC.includes(b))continue;const P=shared(rs[a],rs[b]),d=Math.hypot(mx(rs[a])-mx(rs[b]),my(rs[a])-my(rs[b]))+(P?0:1e6);if(!bs||d<bs.d)bs={a,b,P,d}}inC.push(bs.b);E.push(bs)}
+  const ch={};E.forEach(e=>(ch[e.a]=ch[e.a]||[]).push(e.b));const ds=i=>[i,...(ch[i]||[]).flatMap(ds)];
+  E.forEach(({a,b,P})=>{const pa=P||[mx(rs[b]),my(rs[b])],pb=P||[mx(rs[a]),my(rs[a])],A=near(HB[a],pa[0],pa[1]),B=near(HB[b],pb[0],pb[1]),f={t:'fio',gen:1,tp:'tr',...ortho([{x:A.x,y:A.y,id:A.id},...(P?[{x:P[0],y:P[1],o:P[2]}]:[]),{x:B.x,y:B.y,id:B.id}])};S.items.push(f);TR.push({f,rooms:ds(b)})})});
+ QL.forEach((f,i)=>f.ln=i-(QL.length-1)/2);
  /* Circuitos pela NBR 5410: iluminação até 10 A (1,5 mm²), tomadas até 20 A (2,5 mm²), TUG de cozinha/serviço em circuito próprio, cada TUE no seu */
  let n=1;const asg=(a,cap,dsc)=>{if(!a.length)return;a.sort((p,q)=>ord.indexOf(RM.get(p))-ord.indexOf(RM.get(q)));let sum=0,g=1;const gs=[];a.forEach((t,j)=>{const w=parseFloat(t.p)||0;if(j&&sum+w>cap){n++;g++;sum=0}t.c=String(n);gs.push(g);sum+=w});a.forEach((t,j)=>t.dsc=g>1?dsc+' '+gs[j]:dsc);n++};
  const nmW=[...new Set(Wt.map(t=>info[RM.get(t)].tp))].map(x=>x=='cozinha'?'Cozinha':'Serviço').join('/');
  asg(Ls,1200,'Iluminação');asg(Wt,2000,'TUG '+nmW);asg(D,2000,'TUG Geral');T.forEach(t=>{t.c=String(n++);t.dsc=t.nm||'TUE'});S.ov={};fixTUE();
+ /* NBR 5410: fator de agrupamento (tab. 42) pelo nº de circuitos no mesmo eletroduto; ocupação máx. 40% (3+ condutores) para o diâmetro */
+ const rc=rs2=>[...new Set([...Ls,...Wt,...D].filter(t=>rs2.includes(RM.get(t))).map(t=>t.c))];TR.forEach(o=>o.cs=o.t?[o.t.c]:rc(o.rooms));
+ const FCA=[1,1,.8,.7,.65,.6,.57,.54,.52,.5];S.fca={};TR.forEach(o=>o.cs.forEach(c=>{S.fca[c]=Math.min(S.fca[c]||1,FCA[Math.min(o.cs.length,9)])}));
+ const cm={};circs().forEach(o=>cm[o.n]=o);const OD={1.5:3,2.5:3.7,4:4.3,6:4.9,10:6.4,16:7.6,25:9.6,35:10.8},ND=[[16,12],[20,16],[25,22],[32,29],[40,37],[50,47],[60,57],[75,72]];
+ TR.forEach(o=>{if(!o.cs.length)return;let a=0;o.cs.forEach(c=>{const q=cm[c];if(q)a+=(q.k=='luz'?4:3)*Math.PI*(OD[q.cabo]/2)**2});const d=(ND.find(([,i])=>a<=.4*Math.PI*(i/2)**2)||ND[ND.length-1])[0];o.f.lb=(o.t?'TUE ':'')+'C'+o.cs.join(',C')+' ∅'+d});
  pp(1);auto();draw();$('bFt').click();
- await msg(`Projeto v3.0 gerado: ${info.length} cômodos, ${n-1} circuitos.\n\nFiação encadeada ponto a ponto (luminária → tomada → tomada vizinha): ${(LC/U).toFixed(1)} m de eletroduto, economia de ${Math.max(0,(LS-LC)/U).toFixed(1)} m contra ligação em estrela.\n\nAgora é só revisar: mova, apague ou edite qualquer item. Confira sempre com a NBR 5410 e as normas da sua concessionária antes de executar.`)}
+ await msg(`Projeto v3.1 gerado: ${info.length} cômodos, ${n-1} circuitos.\n\nEletrodutos v3.1: ${T.length} dedicado(s) para TUE (1 por circuito, tracejado) + ${sd.length} tronco(s) geral(is) de iluminação/TUG saindo do QDC. Dentro dos cômodos a fiação é encadeada ponto a ponto (economia de ${Math.max(0,(LS-LC)/U).toFixed(1)} m contra ligação em estrela).\nBitolas já consideram o fator de agrupamento (NBR 5410, tab. 42); diâmetros dos eletrodutos com ocupação máx. de 40%.\n\nAgora é só revisar: mova, apague ou edite qualquer item. Confira sempre com a NBR 5410 e as normas da sua concessionária antes de executar.`)}
 $('bGe').onclick=gerar;
 $('bDl').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({nome:$('nm').value,dados:S})],{type:'application/json'}));a.download=($('nm').value||'projeto')+'.dce.json';a.click()};
 $('bUl').onclick=()=>$('fl').click();
-$('fl').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const j=JSON.parse(await f.text());if(!j.dados||!Array.isArray(j.dados.items))throw 0;if(!await yes('Substituir a planta atual pelo conteúdo do arquivo?'))return;S.items=j.dados.items;S.nomed=j.dados.nomed;S.cfg=Object.assign({fase:127,forn:'mono'},j.dados.cfg);S.q=Object.assign({},DQ,j.dados.q);S.ov=j.dados.ov||{};sel=null;pp(1);auto();draw();$('bFt').click()}catch(_){msg('Arquivo inválido. Use um arquivo baixado pelo próprio site (.dce.json).')}};
+$('fl').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const j=JSON.parse(await f.text());if(!j.dados||!Array.isArray(j.dados.items))throw 0;if(!await yes('Substituir a planta atual pelo conteúdo do arquivo?'))return;S.items=j.dados.items;S.nomed=j.dados.nomed;S.cfg=Object.assign({fase:127,forn:'mono'},j.dados.cfg);S.q=Object.assign({},DQ,j.dados.q);S.ov=j.dados.ov||{};S.fca=j.dados.fca||{};sel=null;pp(1);auto();draw();$('bFt').click()}catch(_){msg('Arquivo inválido. Use um arquivo baixado pelo próprio site (.dce.json).')}};
 
 /* ===== Prancha final (igual ao projeto de referência) ===== */
 const LEG=['cx','camp','tec','qgd','tb','tm','ta','td','is','i3','i4','luz','porta','janela'];
@@ -418,6 +465,7 @@ async function pdfGo(hd){fixTUE();await save();const W=1240,H=877,cs=circs(),cn=
   s=Math.min(940/(x1-x0),Hp/(y1-y0),1.4);g.save();g.translate(270+(940-(x1-x0)*s)/2-x0*s,10-y0*s);g.scale(s,s);items(g,true);g.restore()}
  LEG.forEach((k,i)=>{const y=60+i*23;g.save();g.translate(28,y);if(ROTK.includes(k))g.rotate(-Math.PI/2);sym(g,k,'#000',{p:'100',c:'1',cmd:'a',len:20});g.restore();g.fillStyle='#000';g.font='bold 13px sans-serif';g.textAlign='left';g.fillText(NM[k].replace(' (Three Way)',''),62,y+4)});
  g.font='bold 12px sans-serif';g.fillText('Fase-Neutro-Retorno-Terra',20,385);
+ [['tr','Eletroduto tronco (ilum./TUG)',[]],['tue','Eletroduto dedicado TUE',[9,4]],['rm','Ramal / derivação',[]]].forEach(([k,n,d],i)=>{const y=412+i*22;g.save();g.strokeStyle='#000';g.lineWidth=k=='tr'?2.6:k=='tue'?2:1.2;g.setLineDash(d);g.beginPath();g.moveTo(20,y);g.lineTo(58,y);g.stroke();g.restore();g.fillStyle='#000';g.font='bold 12px sans-serif';g.textAlign='left';g.fillText(n,66,y+4)});
  const tot=Math.round(cs.reduce((a,o)=>a+o.w,0)),R=[['Circuito','Cabo(mm²)','Disjuntor(A)','Tensão(V)','Pot.(VA)','Fases','Descrição'],['Geral',S.q.cabo,S.q.ig,VG(),tot,FG0(),'Entrada'],['DPS',S.q.cabo,'-','-','-',FG0(),'Proteção Surtos'],['DR',S.q.cabo,S.q.idr+'A',VG(),'-',FG0(),'Proteção Choques'],...cs.map(o=>[o.n,o.cabo,o.b,o.v,Math.round(o.w),fas(o),o.d])];
  const cw=[62,74,86,70,70,78,160],tx0=20,rows=Math.max(R.length,10),ty0=Math.min(620,862-22*rows);g.fillStyle='#000';g.font='bold 18px sans-serif';g.textAlign='left';g.fillText('Quadro de cargas',tx0,ty0-10);g.lineWidth=2.5;g.textAlign='center';
  for(let r=0;r<rows;r++){let x=tx0;cw.forEach((w,c)=>{g.strokeRect(x,ty0+r*22,w,22);if(R[r]){g.font=(r?'':'bold ')+(r?13:12)+'px sans-serif';g.fillStyle='#000';g.fillText(R[r][c],x+w/2,ty0+r*22+16)}x+=w})}
