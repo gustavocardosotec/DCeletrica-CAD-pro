@@ -49,7 +49,7 @@ body{margin:0;font-family:Inter,system-ui,"Segoe UI",sans-serif;background:var(-
  #bAd{bottom:12px!important}
 }
 
-/* v3.0 - mobile-first */
+/* v3.0 alfa - mobile-first */
 body{-webkit-tap-highlight-color:transparent}
 button,.btn,.tb,.it{touch-action:manipulation;-webkit-user-select:none;user-select:none}
 #vE{height:100vh;height:100dvh}
