@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
 <title>DCeletrica CAD Pro 5.3 alfa</title>
-<script src="https://cdn.tailwindcss.com"></script><script src="config.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script><link rel="stylesheet" href="estilo.css">
+<script src="https://cdn.tailwindcss.com"></script><script src="config.js"></script><script src="https://accounts.google.com/gsi/client" async defer></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script><link rel="stylesheet" href="estilo.css">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><style>
 @media(max-width:700px){
 html,body{overscroll-behavior:none;-webkit-text-size-adjust:100%}
@@ -41,7 +41,7 @@ input,select,textarea{font-size:16px!important}
   <div id="frm"><div class="field"><span>✉️</span><input id="em" type="email" placeholder="seu@email.com" class="in" autocomplete="email"></div>
   <div class="field"><span>🔒</span><input id="pw" type="password" placeholder="Senha" class="in" autocomplete="current-password"></div>
   <p id="le" class="text-sm min-h-[20px]" style="color:#b42318"></p>
-  <button id="bIn" class="btn or w-full mt-1 py-3">Entrar</button><div class="flex items-center gap-3 my-3" style="color:#64748b;font-size:12px"><div style="flex:1;height:1px;background:#dbe3ec"></div>ou<div style="flex:1;height:1px;background:#dbe3ec"></div></div><button id="bGg" class="btn ghost w-full py-3"><svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.6 5.9c4.4-4.1 7-10.1 7-17.6z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C.9 16.5 0 20.1 0 24s.9 7.5 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.3 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>&nbsp;Continuar com Google</button>
+  <button id="bIn" class="btn or w-full mt-1 py-3">Entrar</button><div class="flex items-center gap-3 my-3" style="color:#64748b;font-size:12px"><div style="flex:1;height:1px;background:#dbe3ec"></div>ou<div style="flex:1;height:1px;background:#dbe3ec"></div></div><div id="bGgw" class="hidden" style="justify-content:center;min-height:44px"></div><button id="bGg" class="btn ghost w-full py-3"><svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.6 5.9c4.4-4.1 7-10.1 7-17.6z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C.9 16.5 0 20.1 0 24s.9 7.5 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.3 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>&nbsp;Continuar com Google</button>
   <button id="bUp" class="btn ghost w-full mt-2 py-3">Criar conta</button><button id="bLoc2" class="btn ghost w-full mt-2 py-3">🚪 Usar sem conta</button><p class="text-xs mt-2" style="color:#64748b">⚠️ Sem conta, seus projetos <b>não são salvos na nuvem</b>: ficam só neste aparelho e podem ser perdidos se você limpar os dados do navegador.</p><button id="bRc" class="text-sm mt-4 underline" style="color:#64748b">Esqueci minha senha</button></div>
   <div id="cfgw" class="hidden text-sm"><p class="p-3 rounded-lg" style="background:#fff4e5;border:1px solid #f2b66b"><b>A conta ainda não está ativada neste site.</b> Quem entra sem conta só enxerga os projetos feitos neste mesmo aparelho. ⚠️ Esses projetos <b>não são salvos na nuvem</b> e podem ser perdidos se você limpar os dados do navegador.</p><button id="bLoc" class="btn w-full mt-3 py-2.5">Usar sem conta (só neste aparelho)</button></div>
  </div></div>
@@ -153,6 +153,20 @@ $('bRc').onclick=async()=>{const e=$('em').value.trim();if(!e||!CFG.url){$('le')
 $('pw').onkeydown=e=>{if(e.key=='Enter')auth(0)};
 /* ===== Login com Google ===== */
 $('bGg').onclick=()=>{if(!CFG.url){$('le').textContent='Conta não ativada neste site.';return}location.href=CFG.url+'/auth/v1/authorize?provider=google&redirect_to='+encodeURIComponent(location.origin+location.pathname)};
+/* Botão oficial do Google (mostra o nome do site, não o endereço do Supabase) */
+async function ggBoot(){
+ const id=CFG.googleId;if(!id||id.startsWith('COLE_')||!window.google?.accounts?.id||!crypto.subtle)return;
+ const rb=new Uint8Array(16);crypto.getRandomValues(rb);const raw=[...rb].map(x=>x.toString(16).padStart(2,'0')).join('');
+ const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(raw)))].map(x=>x.toString(16).padStart(2,'0')).join('');
+ google.accounts.id.initialize({client_id:id,nonce:hash,callback:async r=>{
+  $('le').textContent='';
+  try{const d=await api('/auth/v1/token?grant_type=id_token',{provider:'google',id_token:r.credential,nonce:raw});
+   if(d.access_token){ses=d;localStorage.setItem('dce_ses',JSON.stringify(d));list()}
+   else $('le').textContent='Não foi possível entrar com o Google. Tente de novo.'}
+  catch(e){$('le').textContent='Sem conexão. Tente de novo.'}}});
+ google.accounts.id.renderButton($('bGgw'),{type:'standard',theme:'outline',size:'large',text:'continue_with',shape:'rectangular',locale:'pt-BR',width:Math.min(380,Math.max(200,innerWidth-48))});
+ $('bGgw').classList.remove('hidden');$('bGgw').classList.add('flex');$('bGg').style.display='none'}
+window.addEventListener('load',ggBoot);
 /* ===== Configurações da conta ===== */
 const UH=()=>({apikey:CFG.key,Authorization:'Bearer '+ses.access_token,'Content-Type':'application/json'});
 const temSenha=u=>(u.app_metadata?.providers||[]).includes('email')||!!u.user_metadata?.has_password;
