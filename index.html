@@ -155,7 +155,7 @@ $('pw').onkeydown=e=>{if(e.key=='Enter')auth(0)};
 $('bGg').onclick=()=>{if(!CFG.url){$('le').textContent='Conta não ativada neste site.';return}location.href=CFG.url+'/auth/v1/authorize?provider=google&redirect_to='+encodeURIComponent(location.origin+location.pathname)};
 /* Botão oficial do Google (mostra o nome do site, não o endereço do Supabase) */
 async function ggBoot(){
- const id=CFG.googleId;if(!id||id.startsWith('COLE_')||!window.google?.accounts?.id||!crypto.subtle)return;
+ const id=CFG.googleId;if(!id||id.startsWith('COLE_')){console.warn('[Google] googleId não encontrado no config.js (arquivo antigo ou em cache?)');return}if(!window.google?.accounts?.id){console.warn('[Google] biblioteca do Google não carregou (bloqueador de anúncios?)');return}if(!crypto.subtle){console.warn('[Google] precisa de https');return}
  const rb=new Uint8Array(16);crypto.getRandomValues(rb);const raw=[...rb].map(x=>x.toString(16).padStart(2,'0')).join('');
  const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(raw)))].map(x=>x.toString(16).padStart(2,'0')).join('');
  google.accounts.id.initialize({client_id:id,nonce:hash,callback:async r=>{
