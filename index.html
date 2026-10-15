@@ -113,7 +113,7 @@ input,select,textarea{font-size:16px!important}
  <div class="qcc" style="margin-top:4px;font-size:13px"><div id="cfG"></div><div id="cfP" style="margin-top:6px"></div></div>
  <p class="text-xs" style="color:#64748b;margin-top:6px">Você escolhe: pode entrar com o Google, com e-mail e senha, ou os dois. É a mesma conta e os mesmos projetos.</p>
  <h4 id="cfT" class="font-extrabold" style="margin-top:16px">🔒 Senha</h4>
- <label>Nova senha (mínimo 8 caracteres)</label><input id="cfS1" type="password" class="in" autocomplete="new-password">
+ <div id="cfAw"><label>Senha atual</label><input id="cfS0" type="password" class="in" autocomplete="current-password"></div><label>Nova senha (mínimo 8 caracteres)</label><input id="cfS1" type="password" class="in" autocomplete="new-password">
  <label>Repita a nova senha</label><input id="cfS2" type="password" class="in" autocomplete="new-password">
  <p id="cfE" class="text-sm min-h-[20px]" style="margin-top:6px"></p>
  <button id="cfOk" class="btn or w-full py-3 mt-1">Salvar senha</button>
@@ -167,14 +167,20 @@ async function cfgAbre(){
  $('cfP').innerHTML=p?'✅ <b>E-mail e senha</b> ativado':'⚪ <b>E-mail e senha</b> ainda não criada';
  $('cfT').textContent=p?'🔒 Trocar senha':'🔒 Criar uma senha';
  $('cfOk').textContent=p?'Trocar senha':'Criar senha';
- $('cfS1').value=$('cfS2').value='';$('cfE').textContent='';
+ $('cfS0').value=$('cfS1').value=$('cfS2').value='';$('cfE').textContent='';$('cfAw').style.display=p?'':'none';
  $('mCfg').classList.remove('hidden')}
 async function cfgSalva(){
  const a=$('cfS1').value,b=$('cfS2').value,e=$('cfE');e.style.color='#b42318';
  if(a.length<8){e.textContent='A senha precisa ter pelo menos 8 caracteres.';return}
  if(a!==b){e.textContent='As senhas não são iguais.';return}
  $('cfOk').disabled=true;
- try{const r=await fetch(CFG.url+'/auth/v1/user',{method:'PUT',headers:UH(),body:JSON.stringify({password:a,data:{has_password:true}})});const d=await r.json().catch(()=>({}));
+ try{
+  if(temSenha(ses.user||{})){
+   const c=$('cfS0').value;if(!c){e.textContent='Digite sua senha atual.';$('cfOk').disabled=false;return}
+   const v=await api('/auth/v1/token?grant_type=password',{email:ses.user.email,password:c});
+   if(!v.access_token){e.textContent='A senha atual está incorreta.';$('cfOk').disabled=false;return}
+   ses={...ses,access_token:v.access_token,refresh_token:v.refresh_token};localStorage.setItem('dce_ses',JSON.stringify(ses))}
+  const r=await fetch(CFG.url+'/auth/v1/user',{method:'PUT',headers:UH(),body:JSON.stringify({password:a,data:{has_password:true}})});const d=await r.json().catch(()=>({}));
   if(r.ok){ses.user=d;localStorage.setItem('dce_ses',JSON.stringify(ses));$('mCfg').classList.add('hidden');await msg('Senha salva ✅\n\nAgora você pode entrar com e-mail e senha ou com o Google, como preferir.')}
   else{const m=(d.msg||d.error_description||d.message||'').toLowerCase();
    e.textContent=m.includes('same')?'A nova senha precisa ser diferente da atual.':m.includes('reauth')||m.includes('recent')?'Por segurança, saia, entre de novo e tente outra vez.':m.includes('weak')||m.includes('password')?'Senha fraca demais. Tente uma mais forte.':'Não foi possível salvar. Tente de novo.'}
