@@ -1,7 +1,7 @@
 // Configuração do Supabase estruturada para o index.html
 const CFG = {
   // Client ID do Google (Google Cloud > Credenciais > ID do cliente OAuth). Pode ficar público.
-  googleId: '732718522302-gkshct7hfjeg17nngq68qnt6rlgfjuui.apps.googleusercontent.com',
+  googleId: '732718522302-ajfqb00vle2rd0v5oq70jj6e3cbcld1f.apps.googleusercontent.com',
   url: 'https://rqmhwkhhbhzvfqcrcdlz.supabase.co',
   key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxbWh3a2hoYmh6dmZxY3JjZGx6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE3NTk4OTMsImV4cCI6MjEwNzMzNTg5M30.cbRQsNmZtJDG8caS80JuMRDtp8dVDyKdteznxSGvOdQ'
 };
