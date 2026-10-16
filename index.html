@@ -1,21 +1,8 @@
 <!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
 <title>DCelétrica CAD Pro</title>
-<meta name="description" content="Software profissional online para projetos elétricos residenciais, dimensionamento NBR 5410 e geração de pranchas em PDF.">
-<meta property="og:site_name" content="DCelétrica CAD Pro">
-
-<!-- Dado Estruturado Schema.org para o Nome do Site no Google Search -->
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "WebSite",
-  "name": "DCelétrica CAD Pro",
-  "alternateName": ["DCelétrica CAD", "DC CAD Pro"],
-  "url": "https://dccadpro.com/"
-}
-</script>
-
 <link rel="icon" type="image/png" sizes="192x192" href="favicon.png"><link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="description" content="Software profissional online para projetos elétricos residenciais, dimensionamento NBR 5410 e geração de pranchas em PDF.">
 <script src="https://cdn.tailwindcss.com"></script><script src="config.js"></script><script src="https://accounts.google.com/gsi/client" async defer></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script><link rel="stylesheet" href="estilo.css">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><style>
 @media(max-width:700px){
@@ -48,7 +35,7 @@ input,select,textarea{font-size:16px!important}
 @media(max-width:800px){.hw{grid-template-columns:1fr}.hcs{grid-template-columns:1fr}.hnav{margin:-46px 14px 0}.hnav .hl{display:none}}
 .admw{position:relative;flex:none}.admm{display:none;position:absolute;right:0;top:calc(100% + 6px);min-width:230px;background:#fff;border:1px solid #dbe3ec;border-radius:12px;box-shadow:0 14px 34px #0f2a4333;z-index:40;padding:6px}.admw.open .admm{display:block}.admm .it{position:relative;font-weight:600;color:#0f2a43}.admm .it.sp:after{top:50%;right:10px;margin-top:-5px}.admh{font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#64748b;padding:6px 10px 4px}@media(max-width:700px){.admm{position:fixed;left:8px;right:8px;top:auto;bottom:8px}}
 .sp{position:relative}.sp:after{content:"";display:none;position:absolute;top:2px;right:2px;width:11px;height:11px;border-radius:99px;background:#e11d48;border:2px solid #fff}.sp.has:after{display:block}
-.logo img.lg{width:34px;height:34px;border-radius:99px;background:#fff;object-fit:cover;vertical-align:middle;margin-right:8px;flex:none}
+.logo img.lg{width:34px;height:34px;border-radius:9px;background:#fff;object-fit:cover;vertical-align:middle;margin-right:8px;flex:none}
 </style>
 <script>document.addEventListener('pointerdown',e=>{if(!e.target.closest('.grp'))document.querySelectorAll('.grp.open').forEach(g=>g.classList.remove('open'))},true)</script>
 </head>
@@ -746,7 +733,7 @@ function ctList(){const q=$('ctq').value.trim().toLowerCase(),me=String(ses&&ses
   <div class="flex gap-2 mt-2 items-center"><button class="btn ghost" data-pj="${c.id}">📁 Ver projetos</button>${eu?'<span class="text-sm ml-auto">👑 Dono</span>':`<select class="in ml-auto" style="width:auto;padding:6px 9px" data-nv="${c.id}" data-old="${c.nivel}">${op}</select>`}</div>${eu?'':`<div class="flex gap-2 mt-2"><button class="btn ghost" data-sn="${c.id}">🔑 Nova senha</button><button class="btn danger ml-auto" data-ex="${c.id}">🚫 Excluir conta</button></div>`}<div data-pl="${c.id}"></div></div>`}).join(''):'<p class="text-sm" style="color:#64748b">Nenhuma conta encontrada.</p>'}
 $('bCt').onclick=()=>{$('mCt').classList.remove('hidden');ctLoad()};$('ctx').onclick=()=>$('mCt').classList.add('hidden');$('ctu').onclick=()=>ctLoad();$('ctq').oninput=ctList;
 async function ctProj(id){const box=$('ctl').querySelector(`[data-pl="${id}"]`);if(!box)return;const c=ctAll.find(x=>x.id==id),who=c?c.email:'';box.dataset.on=1;box.textContent='Carregando...';
- try{const d=await rpcJ('admin_projetos',{p_uid:id});box.innerHTML=d.length?d.map(p=>`<div class="text-xs mt-2" style="padding:8px;border:1px solid #dbe3ec;border-radius:99px;background:#f8fafc"><b>${esc(p.nome||'Sem título')}</b><div style="color:#334155">${p.simbolos} símbolos &bull; ${p.comodos} cômodos &bull; ${fB(p.bytes)} &bull; ${fD(p.atualizado)}</div><div class="flex gap-2 mt-2"><button class="btn ghost" data-vp="${p.id}" data-who="${esc(who)}">👁 Abrir</button><button class="btn danger" data-dp="${p.id}" data-nm="${esc(p.nome||'Sem título')}" data-u="${id}">🗑 Apagar</button></div></div>`).join(''):'<div class="text-xs mt-2" style="color:#64748b">Nenhum projeto nesta conta.</div>'}
+ try{const d=await rpcJ('admin_projetos',{p_uid:id});box.innerHTML=d.length?d.map(p=>`<div class="text-xs mt-2" style="padding:8px;border:1px solid #dbe3ec;border-radius:9px;background:#f8fafc"><b>${esc(p.nome||'Sem título')}</b><div style="color:#334155">${p.simbolos} símbolos &bull; ${p.comodos} cômodos &bull; ${fB(p.bytes)} &bull; ${fD(p.atualizado)}</div><div class="flex gap-2 mt-2"><button class="btn ghost" data-vp="${p.id}" data-who="${esc(who)}">👁 Abrir</button><button class="btn danger" data-dp="${p.id}" data-nm="${esc(p.nome||'Sem título')}" data-u="${id}">🗑 Apagar</button></div></div>`).join(''):'<div class="text-xs mt-2" style="color:#64748b">Nenhum projeto nesta conta.</div>'}
  catch(x){box.textContent='Não foi possível carregar os projetos.'}}
 /* Abre o projeto de outra conta só para ver (nada é salvo) */
 async function ctVer(pid,who){try{const d=await rpcJ('admin_projeto',{p_id:pid});if(!d)throw 0;$('mCt').classList.add('hidden');ro=1;roWho=who;open({id:d.id,nome:d.nome,dados:d.dados})}catch(e){await msg('Não foi possível abrir este projeto. Rode o supabase_controle.sql atualizado no Supabase.')}}
@@ -832,7 +819,7 @@ function saDraw(){if(!$('sal')||!$('san'))return;const q=saQ.trim().toLowerCase(
 async function saAbre(id,q){if(!q){saC=id;saSig='';$('saT').textContent='📨 Conversa';$('saBk').style.display='';$('saBody').textContent='Carregando...'}let d;
  try{d=await rpcJ('suporte_admin_conversa',{p_id:id});if(!d)throw 0}catch(e){if(!q)$('saBody').innerHTML='<p class="text-sm" style="color:#b42318">Não foi possível abrir esta conversa.</p>';return}
  const ms=d.mensagens||[],sg=ms.length+'|'+(ms.length?ms[ms.length-1].id:'');if(q&&(sg==saSig||saC!=id))return;saSig=sg;spAdmChk();
- const keep=$('sar')?$('sar').value:'',had=!!(document activeElement&&document.activeElement.id=='sar');
+ const keep=$('sar')?$('sar').value:'',had=!!(document.activeElement&&document.activeElement.id=='sar');
  $('saBody').innerHTML=`<div class="text-sm"><b style="word-break:break-word">${esc(d.assunto)}</b></div>
  <div class="text-xs grid grid-cols-2 gap-1 mt-2" style="color:#334155;word-break:break-all"><div><span style="color:#64748b">👤 Quem:</span> ${saWho(d)}</div>${SI('✉️ Contato',d.contato)}${SI('🏷️ Versão',d.versao)}${SI('📱 Aparelho',d.aparelho)}${SI('🌐 Navegador',d.navegador)}<div><span style="color:#64748b">🕐 Aberta:</span> ${fD(d.criado)}</div></div>
  ${ms.map(m=>spBub(m,m.autor!='equipe',m.autor=='equipe'?'Equipe'+(m.por?' • '+esc(m.por):''):'Pessoa')).join('')}
