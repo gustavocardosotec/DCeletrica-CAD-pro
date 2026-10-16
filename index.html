@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<script>try{var r=sessionStorage.getItem('dce_redir');if(r){sessionStorage.removeItem('dce_redir');history.replaceState(null,'',r)}}catch(e){}</script>
 <title>DC CAD Pro</title>
 <meta name="application-name" content="DC CAD Pro"><meta property="og:site_name" content="DC CAD Pro"><meta property="og:title" content="DC CAD Pro">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"DC CAD Pro","alternateName":["DC CAD Pro","DCelétrica CAD Pro"],"url":"https://dccadpro.com/"}</script>
@@ -864,7 +865,8 @@ async function spTick(){if(spBz)return;spBz=1;
   if(!$('mSpA').classList.contains('hidden')){if(saC)await saAbre(saC,1);else if($('sal'))await saLoad(1)}}catch(e){}spBz=0}
 setInterval(spTick,6000);
 setInterval(()=>{if(document.hidden||!ses||!CFG.url||!$('vL').classList.contains('hidden'))return;spChk();if($('bSpA').style.display!='none')spAdmChk()},45000);
-(async()=>{const h=new URLSearchParams(location.hash.slice(1));
+(async()=>{try{const r=sessionStorage.getItem('dce_redir');if(r){sessionStorage.removeItem('dce_redir');if(location.pathname=='/')history.replaceState(null,'',r)}}catch(e){}
+ const h=new URLSearchParams(location.hash.slice(1));
  if(h.get('error_description')){history.replaceState(null,'','/login');setTimeout(()=>{$('le').textContent='Não foi possível entrar com o Google: '+h.get('error_description').replace(/\+/g,' ')},0)}
  if(CFG.url&&h.get('access_token')){ses={access_token:h.get('access_token'),refresh_token:h.get('refresh_token'),user:{}};localStorage.setItem('dce_ses',JSON.stringify(ses));history.replaceState(null,'','/');
   if(h.get('type')=='recovery'){const n=prompt('Digite sua nova senha (mínimo 8 caracteres):');if(n&&n.length>=8){const r=await fetch(CFG.url+'/auth/v1/user',{method:'PUT',headers:{apikey:CFG.key,Authorization:'Bearer '+ses.access_token,'Content-Type':'application/json'},body:JSON.stringify({password:n})});alert(r.ok?'Senha alterada!':'Não foi possível alterar. Peça um novo link.')}}}
