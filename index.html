@@ -887,7 +887,7 @@ const flush=()=>{if(ro||!pend||!cur||!S||$('vE').classList.contains('hidden'))re
 addEventListener('pagehide',flush);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='hidden')flush()});
 /* ===== Feedback (v3.2) ===== */
 const dev=()=>{const u=navigator.userAgent,b=/Edg\//.test(u)?'Edge':/OPR\//.test(u)?'Opera':/Firefox\//.test(u)?'Firefox':/Chrome\//.test(u)?'Chrome':/Safari\//.test(u)?'Safari':'Outro',o=/Android/.test(u)?'Android':/iPhone|iPad/.test(u)?'iOS':/Windows/.test(u)?'Windows':/Mac OS/.test(u)?'macOS':/Linux/.test(u)?'Linux':'';return b+(o?' • '+o:'')};
-const VER='8.0 alfa',TF={erro:'🐞 Erro',ideia:'💡 Ideia',elogio:'👏 Elogio'};
+const VER='8.2 alfa',TF={erro:'🐞 Erro',ideia:'💡 Ideia',elogio:'👏 Elogio'};
 const FH=()=>({apikey:CFG.key,Authorization:'Bearer '+(ses&&ses.access_token&&ses.access_token!='local'?ses.access_token:CFG.key),'Content-Type':'application/json'});
 $('bFb').onclick=$('bFb2').onclick=()=>{$('fbm').value='';$('fbn').value=ses&&ses.access_token!='local'&&ses.user&&ses.user.email?nomeAut():'';$('fbe').textContent='';$('mFb').classList.remove('hidden')};
 $('fbx').onclick=()=>$('mFb').classList.add('hidden');
@@ -2105,9 +2105,9 @@ setInterval(()=>{try{if(!S||$('vE').classList.contains('hidden')){b.style.displa
 /* v7.7: abrir arquivo .dccad pelo app instalado (PC) */
 if('launchQueue' in window)launchQueue.setConsumer(async p=>{try{if(!p.files||!p.files.length||!ses||ses.access_token=='local')return;const f=await p.files[0].getFile(),j=JSON.parse(await f.text()),d=j.dados||j.d;if(!d||!Array.isArray(d.items))return;delete d.pubId;const r=await DB('',{method:'POST',body:JSON.stringify({nome:(j.nome||f.name.replace(/\.\w+$/,''))+' (importado)',dados:d})});if(r&&r[0]){ro=0;roWho='';abrirProj(r[0])}}catch(e){}});
 </script>
-<script src="/conta.js" defer></script>
+<script src="/documentos.js" defer></script>
 <script src="/perfis.js" defer></script><script src="/campo.js" defer></script>
 <script src="/ia.js" defer></script>
 <script src="/pix.js" defer></script>
-<script src="/orcamentos.js" defer></script>
+<script src="/orcamentos.js" defer></script><script src="/nav.js" defer></script>
 </body></html>

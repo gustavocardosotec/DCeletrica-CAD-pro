@@ -1,4 +1,4 @@
-/* DC CAD Pro v8.0 — Orçamentos avulsos + mini CRM (dashboard, editor, PDF, link para WhatsApp, Pix com valor) */
+/* DC CAD Pro — Orçamentos avulsos + mini CRM (dashboard, editor, PDF, link para WhatsApp, Pix com valor) */
 (()=>{'use strict';
 const $=id=>document.getElementById(id),E=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';'),
 LK='dce_orc80',PK='dce_pay75',EK='dce_emp71',TK='dce_tab80',
@@ -7,9 +7,10 @@ fm=n=>(+n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDig
 pn=v=>{v=String(v==null?'':v).trim();if(!v)return 0;if(v.includes(','))v=v.replace(/\./g,'').replace(',','.');const n=parseFloat(v);return isFinite(n)?n:0},
 nid=()=>{const a='abcdefghijklmnopqrstuvwxyz0123456789',r=crypto.getRandomValues(new Uint8Array(10));let s='';for(const b of r)s+=a[b%36];return s},
 hoje=(p=0)=>{const d=new Date(Date.now()+p*864e5);return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)},
+addD=(s,n)=>{const x=new Date((s||hoje())+'T12:00:00');x.setDate(x.getDate()+n);return x.toISOString().slice(0,10)},
 fd=s=>s?String(s).slice(0,10).split('-').reverse().join('/'):'',
 tst=m=>{let t=$('t80');if(!t){t=document.createElement('div');t.id='t80';t.style.cssText='position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#0f2a43;color:#fff;padding:10px 16px;border-radius:99px;font-size:13px;z-index:99999;max-width:90vw;text-align:center';document.body.appendChild(t)}t.textContent=m;t.style.display='';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',2800)},
-ST={pendente:['Pendente','🟡','#b45309','#fef3c7'],aprovado:['Aprovado','✅','#15803d','#dcfce7'],concluido:['Concluído','🏁','#1d4ed8','#dbeafe']},
+ST={pendente:['Em Aberto','🟡','#b45309','#fef3c7'],enviado:['Enviado','📲','#0e7490','#cffafe'],aprovado:['Aprovado','✅','#15803d','#dcfce7'],pago:['Pago','💰','#1d4ed8','#dbeafe'],cancelado:['Cancelado','🚫','#b42318','#fee2e2']},
 TP={cpf:'CPF',cnpj:'CNPJ',tel:'Celular',mail:'E-mail',aleat:'Chave aleatória'};
 const isLocal=()=>typeof ses=='undefined'||!ses||ses.access_token=='local',
 online=()=>!isLocal()&&navigator.onLine,
@@ -39,8 +40,8 @@ function qrSvg(t,px){try{const q=qrcode(0,'M');q.addData(t);q.make();const n=q.g
  return`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n+m*2} ${n+m*2}" ${px?`width="${px}" height="${px}"`:'style="width:100%;height:auto"'} shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><path d="${p}" fill="#000"/></svg>`}catch(e){return''}}
 
 /* ---------- modelo ---------- */
-const novoD=emp=>({emp:{nome:emp.nome||'',doc:emp.doc||'',end:emp.end||'',tel:emp.tel||'',mail:emp.mail||'',logo:emp.logo||''},cli:{nome:'',doc:'',tel:'',mail:'',end:'',bairro:'',cep:'',cidade:'',uf:''},emi:hoje(),val:hoje(15),itens:[{d:'',q:'1',v:''},{d:'',q:'1',v:''},{d:'',q:'1',v:''}],desc:{v:'',t:'R$'},acr:{v:'',t:'R$'},obs:'',pix:{on:true,i:0},snap:null});
-const norm=d=>{const b=novoD({});for(const k of['emp','cli','desc','acr','pix'])d[k]={...b[k],...(d[k]||{})};d.itens=Array.isArray(d.itens)?d.itens:[];d.emi=d.emi||b.emi;d.val=d.val||b.val;d.obs=d.obs||'';return d};
+const novoD=emp=>({emp:{nome:emp.nome||'',doc:emp.doc||'',end:emp.end||'',tel:emp.tel||'',mail:emp.mail||'',logo:emp.logo||''},cli:{nome:'',doc:'',tel:'',mail:'',end:'',bairro:'',cep:'',cidade:'',uf:''},emi:hoje(),val:hoje(7),vd:'7',pgto:'',itens:[{d:'',q:'1',v:''},{d:'',q:'1',v:''},{d:'',q:'1',v:''}],desc:{v:'',t:'R$'},acr:{v:'',t:'R$'},obs:'',pix:{on:true,i:0},snap:null});
+const norm=d=>{const b=novoD({});for(const k of['emp','cli','desc','acr','pix'])d[k]={...b[k],...(d[k]||{})};d.itens=Array.isArray(d.itens)?d.itens:[];d.emi=d.emi||b.emi;d.val=d.val||b.val;d.vd=d.vd==null?'7':d.vd;d.pgto=d.pgto||'';d.obs=d.obs||'';return d};
 const calc=d=>{const sub=r2((d.itens||[]).reduce((s,x)=>s+pn(x.q)*pn(x.v),0)),f=o=>o.t=='%'?r2(sub*pn(o.v)/100):r2(pn(o.v)),dc=f(d.desc),ac=f(d.acr);return{sub,dc,ac,tot:r2(Math.max(0,sub-dc+ac))}};
 function snapPix(d,pl,tot){if(!d.pix.on||!pl.length)return null;const p=pl[Math.min(d.pix.i|0,pl.length-1)],code=brcode(p,tot);if(!code)return null;return{code,titular:p.nome||'',chave:p.chave?(p.tipo=='tel'||p.tipo=='mail'||p.tipo=='aleat'?p.chave:p.chave):'',tipo:p.chave?(TP[p.tipo]||'Chave'):'Pix copia e cola',rotulo:p.rotulo||''}}
 
@@ -66,7 +67,7 @@ const proxNum=()=>Math.max(0,...ROWS.map(x=>+x.num||0))+1;
 const css=document.createElement('style');css.textContent=`
 .o80t{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 16px}.o80t button{min-height:48px;border-radius:14px;font-weight:800;font-size:15px;background:#fff;border:2px solid var(--ln);color:var(--navy)}.o80t button.on{background:var(--navy);border-color:var(--navy);color:#fff}
 #o80{display:none}#o80.on{display:block}
-.o80sum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.o80sum>div{border-radius:14px;padding:10px 8px;text-align:center}.o80sum small{display:block;font-size:11px;font-weight:700}.o80sum b{display:block;font-size:15px;margin-top:2px;word-break:break-word}
+.o80sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:8px}.o80sum>div{border-radius:14px;padding:10px 8px;text-align:center}.o80sum small{display:block;font-size:11px;font-weight:700}.o80sum b{display:block;font-size:15px;margin-top:2px;word-break:break-word}
 .o80bar{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}.o80bar .in{flex:1 1 100%}.o80bar button{min-height:40px;padding:6px 14px;border-radius:99px;font-size:13px;font-weight:700;background:#f0f4f8;color:var(--navy)}.o80bar button.on{background:var(--or);color:#fff}
 .o80c{display:flex;gap:12px;align-items:center;background:#fff;border:1px solid var(--ln);border-radius:16px;padding:12px;margin-top:10px;cursor:pointer;transition:box-shadow .15s,border-color .15s}.o80c:hover{box-shadow:0 6px 18px #0f2a431f;border-color:#f26b2180}
 .o80n{flex:none;display:grid;place-items:center;width:46px;height:46px;border-radius:12px;background:var(--navy);color:#fff;font-weight:800;font-size:14px}
@@ -81,7 +82,7 @@ const css=document.createElement('style');css.textContent=`
 .o80k{background:#fff;border:1px solid var(--ln);border-radius:16px;padding:14px;margin-top:12px}.o80k h4{font-weight:800;font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--blue);margin:0 0 8px}
 .o80k label{display:block;font-size:12px;font-weight:600;color:var(--mut)}.o80k .in{margin-top:3px;min-height:46px;font-size:16px}
 .o80g{display:grid;grid-template-columns:1fr 1fr;gap:8px}.o80g .f{grid-column:1/-1}
-.o80sb{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.o80sb button{min-height:56px;border-radius:14px;font-weight:800;font-size:13px;border:2px solid transparent;background:#f0f4f8;color:var(--navy);line-height:1.2}
+.o80sb{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px}.o80sb button{min-height:56px;border-radius:14px;font-weight:800;font-size:13px;border:2px solid transparent;background:#f0f4f8;color:var(--navy);line-height:1.2}
 .o80i{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--ln);border-radius:14px;padding:10px;margin-top:8px;background:#fbfcfd}.o80in{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:8px;background:var(--navy);color:#fff;font-size:12px;font-weight:800;margin-top:4px}.o80ib{flex:1;min-width:0}
 .o80ir{display:grid;grid-template-columns:.7fr 1fr 1fr;gap:8px;margin-top:6px;align-items:end}.o80it small{display:block;font-size:12px;font-weight:600;color:var(--mut)}.o80it b{display:block;min-height:46px;line-height:46px;font-size:14px;text-align:right}
 .o80x{flex:none;width:40px;height:40px;border-radius:10px;border:1px solid #f3c6c1;color:#b42318;background:#fff;font-size:15px}
@@ -96,6 +97,20 @@ const css=document.createElement('style');css.textContent=`
 .o80p .li{display:flex;gap:10px;justify-content:space-between;padding:10px 0;border-bottom:1px solid #eef2f6;font-size:14px}.o80p .li:last-child{border:0}.o80p .li small{color:#64748b;display:block}
 .o80p .cta{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));max-width:616px;margin:0 auto;display:flex;gap:8px}.o80p .cta a,.o80p .cta button{display:grid;place-items:center;color:#fff;font-weight:800;border-radius:14px;box-shadow:0 8px 24px #0004;min-height:54px}
 @media(min-width:700px){.o80g{grid-template-columns:repeat(4,1fr)}.o80g .f{grid-column:span 2}.o80g .f4{grid-column:1/-1}}
+.o80sh{position:fixed;inset:0;z-index:95;background:#e5e9ef;display:flex;flex-direction:column;font-family:Inter,system-ui,sans-serif}
+.o80sb2{flex:1;min-height:0;overflow:auto;padding:8px;-webkit-overflow-scrolling:touch}
+.o80pg{width:794px;min-height:1000px;background:#fff;margin:0 auto;padding:36px 42px;box-shadow:0 4px 24px #0003;font-size:13px;color:#000;box-sizing:border-box;transform-origin:top left}
+.o80pg .ce{outline:0;border-bottom:1px dashed #f26b2199;padding:0 2px;min-width:24px;display:inline-block;max-width:100%;word-break:break-word}.o80pg .ce:empty:before{content:attr(data-ph);color:#aaa}.o80pg .ce:focus{background:#fff4e5}
+.o80pg input.ce,.o80pg select.ce{font:inherit;border:0;border-bottom:1px dashed #f26b2199;background:transparent;padding:0;width:auto}
+.o80pg .hh{display:flex;gap:14px;align-items:center;justify-content:center;border:1px solid #000;padding:10px;text-align:center;line-height:1.55}.o80pg .hh img{width:90px;height:90px;object-fit:contain}
+.o80pg .r3{display:flex;flex-wrap:wrap;gap:6px 14px;margin:8px 0;align-items:center}
+.o80pg .bt{background:#dbe5f1;border:1px solid #000;text-align:center;font-weight:800;padding:3px;margin-top:8px}
+.o80pg .cl{display:grid;grid-template-columns:repeat(3,1fr);border-left:1px solid #000;border-top:1px solid #000}.o80pg .cl>div{border-right:1px solid #000;border-bottom:1px solid #000;padding:3px 6px}.o80pg .cl .w2{grid-column:span 2}.o80pg .cl .w3{grid-column:1/-1}
+.o80pg small{display:block;font-size:9px;font-weight:800;color:#334}
+.o80pg table{width:100%;border-collapse:collapse}.o80pg td,.o80pg th{border:1px solid #000;padding:4px 6px;vertical-align:top}.o80pg th{background:#dbe5f1;font-size:11px}.o80pg td.n{text-align:right;white-space:nowrap}
+.o80pg .tt{display:grid;grid-template-columns:1fr 1fr;margin-top:8px;border-left:1px solid #000;border-top:1px solid #000}.o80pg .tt>div{border-right:1px solid #000;border-bottom:1px solid #000;padding:4px 8px;display:flex;justify-content:space-between;gap:8px;align-items:center}.o80pg .tt .g{background:#dbe5f1;font-weight:800;font-size:15px}
+.o80pg .qb{display:flex;gap:12px;align-items:center;border:1px solid #000;padding:8px;margin-top:8px}.o80pg .qb .q{width:110px;height:110px;flex:none}
+
 `;document.head.appendChild(css);
 
 /* ---------- PDF (modelo corporativo) ---------- */
@@ -124,17 +139,19 @@ async function mkPDF(row){const d=norm(JSON.parse(JSON.stringify(row.dados))),{j
  lab('BAIRRO',M,y,24,R);val(cl.bairro,M+24,y,46,R);lab('CIDADE',M+70,y,18,R);val(cl.cidade,M+88,y,50,R);lab('ESTADO',M+138,y,18,R);val(cl.uf,M+156,y,26,R);y+=R+3;
  /* itens */
  const CX=[M,M+12,M+112,M+132,M+157],CWD=[12,100,20,25,25],hdr=()=>{bx(M,y,CW,6,BL);tx('ORÇAMENTO',M+CW/2,y+4.3,'bold',10,'center');y+=6;['ITEM','DESCRIÇÃO','QUANT.','VALOR','TOTAL'].forEach((t,i)=>{bx(CX[i],y,CWD[i],5.5,BL);tx(t,CX[i]+CWD[i]/2,y+3.9,'bold',8,'center')});y+=5.5};
- const FH=13+(d.obs?8+Math.min(5,doc.splitTextToSize(d.obs,CW-4).length)*4:0)+(sn?38:0)+14,LIM=285-FH;
- hdr();const rows=its.slice();while(rows.length<18)rows.push(null);
- for(let i=0;i<rows.length;i++){const x=rows[i];let ls=[''];if(x){doc.setFont('helvetica','normal');doc.setFontSize(9);ls=doc.splitTextToSize(x.d||'',CWD[1]-3)}const h=Math.max(RH,ls.length*4+1.8);
+ const FH=21+(d.pgto?8:0)+(d.obs?8+Math.min(5,doc.splitTextToSize(d.obs,CW-4).length)*4:0)+(sn?38:0)+14,LIM=285-FH;
+ hdr();const rows=its.slice();let FS=9,LH=4,RH2=RH;const need=()=>{doc.setFont('helvetica','normal');doc.setFontSize(FS);return rows.reduce((a,x)=>a+Math.max(RH2,doc.splitTextToSize((x&&x.d)||'',CWD[1]-3).length*LH+1.8),0)},avail=LIM-y;
+ while(FS>6.5&&need()>avail){FS-=.5;LH=FS*.44;RH2=Math.max(3.6,RH*FS/9)}
+ while(rows.length<18&&need()+RH2<=avail)rows.push(null);
+ for(let i=0;i<rows.length;i++){const x=rows[i];let ls=[''];if(x){doc.setFont('helvetica','normal');doc.setFontSize(FS);ls=doc.splitTextToSize(x.d||'',CWD[1]-3)}const h=Math.max(RH2,ls.length*LH+1.8);
   if(y+h>LIM){if(!x)break;doc.addPage();y=14;hdr()}
-  CX.forEach((cx2,k)=>bx(cx2,y,CWD[k],h));tx(String(i+1),CX[0]+6,y+3.9,'normal',8,'center');
-  if(x){ls.forEach((t,k)=>tx(t,CX[1]+1.5,y+3.9+k*4,'normal',9));const t=pn(x.q)*pn(x.v);tx(x.q||'',CX[2]+10,y+3.9,'normal',9,'center');tx(x.v!==''?fm(pn(x.v)):'',CX[3]+CWD[3]-1.2,y+3.9,'normal',9,'right');tx(t?fm(t):'',CX[4]+CWD[4]-1.2,y+3.9,'normal',9,'right')}
+  CX.forEach((cx2,k)=>bx(cx2,y,CWD[k],h));const by=y+Math.min(3.9,h*.72)+(FS<9?.2:0);tx(String(i+1),CX[0]+6,by,'normal',Math.min(8,FS),'center');
+  if(x){ls.forEach((t,k)=>tx(t,CX[1]+1.5,by+k*LH,'normal',FS));const t=pn(x.q)*pn(x.v);tx(x.q||'',CX[2]+10,by,'normal',FS,'center');tx(x.v!==''?fm(pn(x.v)):'',CX[3]+CWD[3]-1.2,by,'normal',FS,'right');tx(t?fm(t):'',CX[4]+CWD[4]-1.2,by,'normal',FS,'right')}
   y+=h}
  /* totais */
  y+=3;const T=6.5,dl=d.desc.t=='%'&&pn(d.desc.v)?` (${d.desc.v}%)`:'',al=d.acr.t=='%'&&pn(d.acr.v)?` (${d.acr.v}%)`:'';
  lab('SUBTOTAL',M,y,36,T);val('R$ '+fm(c.sub),M+36,y,55,T,'r');lab('DESCONTO'+dl,M+91,y,36,T);val(c.dc?'- R$ '+fm(c.dc):'R$ -',M+127,y,55,T,'r');y+=T;
- lab('ACRÉSCIMO'+al,M,y,36,T);val(c.ac?'R$ '+fm(c.ac):'R$ -',M+36,y,55,T,'r');bx(M+91,y,36,T,BL);tx('TOTAL',M+109,y+T/2+1.6,'bold',11,'center');bx(M+127,y,55,T,BL);tx('R$ '+fm(c.tot),M+180,y+T/2+1.6,'bold',11,'right');y+=T+4;
+ lab('ACRÉSCIMO'+al,M,y,36,T);val(c.ac?'R$ '+fm(c.ac):'R$ -',M+36,y,55,T,'r');bx(M+91,y,36,T,BL);tx('TOTAL',M+109,y+T/2+1.6,'bold',11,'center');bx(M+127,y,55,T,[142,169,219]);tx('R$ '+fm(c.tot),M+180,y+T/2+1.6,'bold',11,'right');y+=T+4;if(d.pgto){lab('PAGAMENTO',M,y,36,6.5);val(d.pgto,M+36,y,146,6.5);y+=10.5}
  if(d.obs){const ol=doc.splitTextToSize(d.obs,CW-4).slice(0,5);bx(M,y,CW,6,BL);tx('OBSERVAÇÕES',M+CW/2,y+4.3,'bold',9,'center');bx(M,y+6,CW,ol.length*4+2);ol.forEach((t,k)=>tx(t,M+2,y+10.5+k*4,'normal',9));y+=8+ol.length*4+3}
  if(sn){bx(M,y,CW,34);try{const q=qrcode(0,'M');q.addData(sn.code);q.make();const n=q.getModuleCount(),cs=30/(n+4);doc.setFillColor(255,255,255);doc.rect(M+2,y+2,30,30,'F');doc.setFillColor(0,0,0);for(let r=0;r<n;r++)for(let k=0;k<n;k++)if(q.isDark(r,k))doc.rect(M+2+(k+2)*cs,y+2+(r+2)*cs,cs+.05,cs+.05,'F')}catch(e){}
   tx('PAGUE COM PIX',M+38,y+8,'bold',11);tx('Valor: R$ '+fm(c.tot),M+38,y+14,'bold',10);if(sn.titular)tx('Titular: '+fit(sn.titular,130),M+38,y+19.5,'normal',9);if(sn.tipo&&sn.chave)tx(sn.tipo+': '+fit(sn.chave,140),M+38,y+24.5,'normal',9);tx('Escaneie o QR Code com o app do seu banco.',M+38,y+30,'italic',8);y+=36}
@@ -144,14 +161,14 @@ async function mkPDF(row){const d=norm(JSON.parse(JSON.stringify(row.dados))),{j
  return doc}
 const pdfNome=r=>'orcamento-'+r.num+'-'+String(r.cliente||'cliente').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,30)+'.pdf';
 async function pdfGo(row,share){try{const doc=await mkPDF(row),nm=pdfNome(row);
- if(share){try{const f=new File([doc.output('blob')],nm,{type:'application/pdf'});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:'Orçamento nº '+row.num});return}}catch(x){if(x&&x.name=='AbortError')return}}
- doc.save(nm)}catch(e){console.error(e);tst('Não consegui gerar o PDF')}}
+ if(share&&/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)){try{const f=new File([doc.output('blob')],nm,{type:'application/pdf'});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:'Orçamento nº '+row.num});return}}catch(x){if(x&&x.name=='AbortError')return}}
+ const bl=doc.output('blob'),u=URL.createObjectURL(bl),a=document.createElement('a');a.href=u;a.download=nm;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},5000)}catch(e){console.error(e);tst('Não consegui gerar o PDF')}}
 const linkDe=id=>location.origin+'/orcamento/'+id,
 foneWa=t=>{const n=String(t||'').replace(/\D/g,'');return!n?'':n.length<=11?'55'+n:n},
-msgWa=(row,link)=>{const d=row.dados,c=calc(d),n=d.cli.nome?'Olá, '+d.cli.nome.split(' ')[0]+'! ':'Olá! ';return n+'Segue o orçamento nº '+row.num+(d.emp.nome?' de '+d.emp.nome:'')+'.\n💰 Total: '+brl(c.tot)+(d.val?'\n📅 Válido até '+fd(d.val):'')+(link?'\n\nVeja os detalhes e pague pelo Pix:\n'+link:'\n\n'+d.itens.filter(x=>x.d).map((x,i)=>(i+1)+'. '+x.d+' — '+(x.q||1)+' x '+brl(pn(x.v))).join('\n'))};
+msgWa=(row,link)=>{const d=row.dados,c=calc(d),n=d.cli.nome?'Olá, '+d.cli.nome.split(' ')[0]+'! ':'Olá! ';return n+'Segue o orçamento nº '+row.num+(d.emp.nome?' de '+d.emp.nome:'')+'.\n💰 Total: '+brl(c.tot)+(d.val?'\n📅 Válido até '+fd(d.val):'')+(d.pgto?'\n💳 '+d.pgto:'')+(link?'\n\nVeja os detalhes e pague pelo Pix:\n'+link:'\n\n'+d.itens.filter(x=>x.d).map((x,i)=>(i+1)+'. '+x.d+' — '+(x.q||1)+' x '+brl(pn(x.v))).join('\n'))};
 
 /* ---------- editor ---------- */
-async function editor(row,novo){const emp=await empGet(),pl=await pixGet();let d=norm(row.dados||novoD(emp));row.dados=d;
+async function editor(row,novo){const emp=await empGet(),pl=await pixGet();let d=norm(row.dados||novoD(emp));row.dados=d;if(row.status=='concluido')row.status='pago';
  if(emp.nome||emp.doc||novo){for(const k of['nome','doc','end','tel','mail','logo'])if(emp[k])d.emp[k]=emp[k]}
  const book=(()=>{const m={};ROWS.slice().reverse().forEach(r=>{const c=r.cli||(r.dados&&r.dados.cli);if(c&&c.nome)m[c.nome.trim().toLowerCase()]=c});return m})();
  const o=document.createElement('div');o.className='o80';let dirty=!!novo&&0,tm=null,busy=false,gone=false;
@@ -162,7 +179,7 @@ async function editor(row,novo){const emp=await empGet(),pl=await pixGet();let d
  <div class="o80b"><div>
   <div class="o80k" style="margin-top:0"><h4>Status</h4><div class="o80sb">${Object.entries(ST).map(([k,v])=>`<button data-a="st" data-v="${k}">${v[1]}<br>${v[0]}</button>`).join('')}</div></div>
   <div class="o80k"><h4>Seu cabeçalho</h4><div class="o80eh" data-eh></div></div>
-  <div class="o80k"><h4>Datas</h4><div class="o80g"><label>Emitido em<input type="date" class="in" data-f="emi" value="${E(d.emi)}"></label><label>Válido até<input type="date" class="in" data-f="val" value="${E(d.val)}"></label></div></div>
+  <div class="o80k"><h4>Datas</h4><div class="o80g"><label>Emitido em<input type="date" class="in" data-f="emi" value="${E(d.emi)}"></label><label>Válido até<input type="date" class="in" data-f="val" value="${E(d.val)}"></label><label>Validade da proposta (dias)<input class="in" data-f="vd" inputmode="numeric" value="${E(d.vd)}"></label><label class="f">Condições de pagamento<input class="in" data-f="pgto" list="o80pgl" value="${E(d.pgto)}" placeholder="Ex.: 50% entrada + 50% na conclusão"></label><datalist id="o80pgl"><option value="À vista no Pix"><option value="50% de entrada + 50% na conclusão"><option value="30% de entrada + 70% na entrega"><option value="Cartão em até 12x"></datalist></div></div>
   <div class="o80k"><h4>Cliente</h4><div class="o80g"><label class="f f4">Nome<input class="in" data-f="cli.nome" list="o80cl" autocomplete="off" value="${E(d.cli.nome)}"></label><datalist id="o80cl">${Object.values(book).map(c=>`<option value="${E(c.nome)}">`).join('')}</datalist>
    ${inp('Telefone / WhatsApp','cli.tel',d.cli.tel,'type="tel" inputmode="tel" autocomplete="off"')}${inp('CPF / CNPJ','cli.doc',d.cli.doc,'inputmode="numeric" autocomplete="off"')}${inp('E-mail','cli.mail',d.cli.mail,'type="email" autocomplete="off"','f')}${inp('Endereço','cli.end',d.cli.end,'autocomplete="off"','f')}${inp('CEP','cli.cep',d.cli.cep,'inputmode="numeric" autocomplete="off"')}${inp('Bairro','cli.bairro',d.cli.bairro,'autocomplete="off"')}${inp('Cidade','cli.cidade',d.cli.cidade,'autocomplete="off"')}${inp('UF','cli.uf',d.cli.uf,'maxlength="2" autocapitalize="characters" autocomplete="off"')}</div></div>
   <div class="o80k"><h4>Itens do orçamento</h4><div data-it></div><button class="btn ghost w-full" style="width:100%;margin-top:10px;min-height:48px" data-a="add">＋ Adicionar item</button></div>
@@ -171,7 +188,7 @@ async function editor(row,novo){const emp=await empGet(),pl=await pixGet();let d
   <div class="o80k"><h4>Observações / condições</h4><textarea class="in" data-f="obs" rows="3" maxlength="800" placeholder="Ex.: 50% na aprovação e 50% na entrega. Material incluso.">${E(d.obs)}</textarea></div>
   <button class="btn danger" style="width:100%;margin-top:14px;min-height:48px" data-a="del">🗑 Excluir orçamento</button>
  </div></div>
- <div class="o80f"><button data-a="pdf"><i>📄</i>PDF</button><button data-a="ver"><i>👁</i>Visualizar</button><button class="g" data-a="wa"><i>📲</i>WhatsApp</button><button data-a="lk"><i>🔗</i>Copiar link</button></div>`;
+ <div class="o80f"><button data-a="pdf"><i>📄</i>PDF</button><button data-a="ver"><i>✏️</i>Editar folha</button><button class="g" data-a="wa"><i>📲</i>WhatsApp</button><button data-a="lk"><i>🔗</i>Copiar link</button></div>`;
  document.body.appendChild(o);const q=s=>o.querySelector(s),qa=s=>o.querySelectorAll(s);
  const ehP=()=>{const e=d.emp;q('[data-eh]').innerHTML=(e.logo&&/^data:image\//.test(e.logo)?`<img src="${E(e.logo)}" alt="">`:'')+`<div><b>${E(e.nome||'Sem nome da empresa')}</b><small>${[e.doc&&'CPF/CNPJ: '+E(e.doc),E(e.end),e.tel&&'Tel: '+E(e.tel),E(e.mail)].filter(Boolean).join('<br>')||'Preencha em Configurações &gt; Empresa'}</small><button class="btn ghost" style="min-height:36px;padding:2px 12px;margin-top:6px" data-a="cfg">⚙ Editar dados da empresa</button></div>`},
  itP=()=>{q('[data-it]').innerHTML=d.itens.map(itemH).join('')||'<p class="o80vz">Nenhum item. Toque em “Adicionar item”.</p>'},
@@ -188,21 +205,44 @@ async function editor(row,novo){const emp=await empGet(),pl=await pixGet();let d
  o.addEventListener('input',e=>{const t=e.target,f=t.dataset.f;
   if(t.dataset.k){const i=+t.closest('.o80i').dataset.i;d.itens[i][t.dataset.k]=t.value;const b=t.closest('.o80i').querySelector('[data-t]');b.textContent=brl(pn(d.itens[i].q)*pn(d.itens[i].v));tots();pxP();mark();return}
   if(!f)return;if(t.type=='checkbox'){setP(f,t.checked);pxP();mark();return}
-  let v=t.value;if(f=='pix.i')v=+v;if(f=='cli.uf')v=v.toUpperCase();setP(f,v);
+  let v=t.value;if(f=='pix.i')v=+v;if(f=='cli.uf')v=v.toUpperCase();setP(f,v);if(f=='vd'||f=='emi'){const n=parseInt(d.vd);if(n>0&&d.emi){d.val=addD(d.emi,n);const i=q('[data-f="val"]');if(i)i.value=d.val}}
   if(f.startsWith('desc')||f.startsWith('acr')){tots();pxP()}mark()});
  o.addEventListener('change',e=>{const t=e.target;if(t.dataset.f=='cli.nome'){const c=book[(t.value||'').trim().toLowerCase()];if(c){for(const k of['doc','tel','mail','end','bairro','cep','cidade','uf'])if(!d.cli[k]&&c[k]){d.cli[k]=c[k];const i=q(`[data-f="cli.${k}"]`);if(i)i.value=c[k]}mark()}}
   if(t.dataset.f=='cli.doc'){const n=t.value.replace(/\D/g,'');if(n.length==11)t.value=d.cli.doc=n.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4');else if(n.length==14)t.value=d.cli.doc=n.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5')}});
+ const folha=async()=>{await garante();const w=document.createElement('div');w.className='o80sh';
+ w.innerHTML=`<div class="o80h"><button class="btn ghost" data-z="bk" aria-label="Voltar">←</button><b>Folha do orçamento nº ${row.num}</b><small>toque nos textos para editar</small><button class="btn or" data-z="sv">💾</button></div><div class="o80sb2"><div class="o80pg" data-pg></div></div><div class="o80f" style="grid-template-columns:repeat(3,1fr)"><button data-z="add"><i>＋</i>Item</button><button class="g" data-z="pdf"><i>📄</i>Baixar PDF</button><button data-z="pr"><i>🖨</i>Imprimir</button></div>`;
+ document.body.appendChild(w);const g=s=>w.querySelector(s),pg=g('[data-pg]'),zm=()=>{pg.style.zoom=Math.min(1,(innerWidth-16)/794)};zm();addEventListener('resize',zm);
+ const ce=(p,v,ph)=>`<span class="ce" contenteditable="true" data-e="${p}" data-ph="${ph||''}">${E(v)}</span>`,cell=(l,p,v,c='')=>`<div class="${c}"><small>${l}</small>${ce(p,v)}</div>`;
+ const draw=()=>{const e=d.emp,cl=d.cli,n=Math.max(d.itens.length,8);pg.innerHTML=`<div class="hh">${e.logo&&/^data:image\//.test(e.logo)?`<img src="${E(e.logo)}" alt="">`:''}<div><b style="font-size:18px">${ce('emp.nome',e.nome,'Empresa')}</b><br>CPF/CNPJ: ${ce('emp.doc',e.doc,'documento')}<br>${ce('emp.end',e.end,'Endereço')}<br>Tel: ${ce('emp.tel',e.tel,'telefone')} · ${ce('emp.mail',e.mail,'e-mail')}</div></div>
+ <div class="r3"><span><b>Orçamento nº:</b> ${row.num}</span><span><b>Emitido em:</b> <input type="date" class="ce" data-e="emi" value="${E(d.emi)}"></span><span><b>Válido até:</b> <input type="date" class="ce" data-e="val" value="${E(d.val)}"></span><span><b>Validade:</b> ${ce('vd',d.vd,'7')} dias</span></div>
+ <div class="bt">CLIENTE</div><div class="cl">${cell('NOME','cli.nome',cl.nome,'w2')}${cell('TELEFONE','cli.tel',cl.tel)}${cell('E-MAIL','cli.mail',cl.mail,'w2')}${cell('CPF/CNPJ','cli.doc',cl.doc)}${cell('ENDEREÇO','cli.end',cl.end,'w2')}${cell('CEP','cli.cep',cl.cep)}${cell('BAIRRO','cli.bairro',cl.bairro)}${cell('CIDADE','cli.cidade',cl.cidade)}${cell('UF','cli.uf',cl.uf)}</div>
+ <div class="bt">ORÇAMENTO</div><table><tr><th style="width:36px">ITEM</th><th>DESCRIÇÃO</th><th style="width:70px">QUANT.</th><th style="width:100px">VALOR</th><th style="width:100px">TOTAL</th></tr>${Array.from({length:n},(_,i)=>{const x=d.itens[i];return x?`<tr><td class="n">${i+1}</td><td>${ce('itens.'+i+'.d',x.d,'descrição')}</td><td>${ce('itens.'+i+'.q',x.q)}</td><td class="n">${ce('itens.'+i+'.v',x.v,'0,00')}</td><td class="n" data-rt="${i}"></td></tr>`:`<tr><td class="n">${i+1}</td><td>&nbsp;</td><td></td><td></td><td></td></tr>`}).join('')}</table>
+ <div class="tt"><div>SUBTOTAL<b data-s></b></div><div>DESCONTO <span>${ce('desc.v',d.desc.v,'0')} <select class="ce" data-e="desc.t"><option ${d.desc.t=='R$'?'selected':''}>R$</option><option ${d.desc.t=='%'?'selected':''}>%</option></select></span></div><div>ACRÉSCIMO <span>${ce('acr.v',d.acr.v,'0')} <select class="ce" data-e="acr.t"><option ${d.acr.t=='R$'?'selected':''}>R$</option><option ${d.acr.t=='%'?'selected':''}>%</option></select></span></div><div class="g">TOTAL<b data-t></b></div></div>
+ <div class="bt">CONDIÇÕES DE PAGAMENTO</div><div style="border:1px solid #000;padding:4px 8px">${ce('pgto',d.pgto,'Ex.: 50% entrada + 50% na conclusão')}</div>
+ <div class="bt">OBSERVAÇÕES</div><div style="border:1px solid #000;padding:4px 8px;white-space:pre-wrap">${ce('obs',d.obs,'Observações')}</div><div data-qb></div>`;upd()},
+ upd=()=>{const c=calc(d);g('[data-s]').textContent=brl(c.sub);g('[data-t]').textContent=brl(c.tot);d.itens.forEach((x,i)=>{const r=g('[data-rt="'+i+'"]');if(r)r.textContent=pn(x.q)*pn(x.v)?brl(pn(x.q)*pn(x.v)):''});
+  d.snap=snapPix(d,pl,c.tot);g('[data-qb]').innerHTML=d.snap?`<div class="qb"><div class="q">${qrSvg(d.snap.code)}</div><div><b>PAGUE COM PIX</b><br>Valor: <b>${brl(c.tot)}</b><br>${E(d.snap.titular)}${d.snap.chave?'<br>'+E(d.snap.tipo)+': '+E(d.snap.chave):''}</div></div>`:''};
+ draw();
+ w.addEventListener('input',e=>{const t=e.target,p=t.dataset.e;if(!p)return;let v=t.tagName=='SPAN'?t.innerText.replace(/\n$/,''):t.value;if(p=='cli.uf')v=v.toUpperCase();setP(p,v);if(p=='vd'||p=='emi'){const n=parseInt(d.vd);if(n>0&&d.emi){d.val=addD(d.emi,n);const i=g('[data-e="val"]');if(i)i.value=d.val}}upd();mark()});
+ w.addEventListener('paste',e=>{if(e.target.tagName=='SPAN'){e.preventDefault();document.execCommand('insertText',false,(e.clipboardData||window.clipboardData).getData('text/plain'))}});
+ w.addEventListener('keydown',e=>{if(e.key=='Enter'&&e.target.tagName=='SPAN'&&e.target.dataset.e!='obs')e.preventDefault()});
+ w.addEventListener('click',async e=>{const b=e.target.closest('[data-z]');if(!b)return;const a=b.dataset.z;
+  if(a=='bk'){await gravar();removeEventListener('resize',zm);w.remove();o.remove();gone=true;editor(row,false);return}
+  if(a=='sv'){await gravar(1);tst('Orçamento salvo');return}
+  if(a=='add'){d.itens.push({d:'',q:'1',v:''});draw();mark();return}
+  if(a=='pdf'){await gravar(1);pdfGo(row,false);return}
+  if(a=='pr'){await gravar(1);const wn=window.open('','_blank');try{const u=(await mkPDF(row)).output('bloburl');if(wn)wn.location.href=u;else pdfGo(row,false)}catch(x){if(wn)wn.close();tst('Não consegui gerar o PDF')}}})};
  const garante=async()=>{await gravar(1);return row};
  o.addEventListener('click',async e=>{const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;
   if(a=='bk')return sair();
   if(a=='sv'){await gravar(1);tst('Orçamento salvo');return}
-  if(a=='st'){row.status=b.dataset.v;stP();mark();return}
+  if(a=='st'){row.status=b.dataset.v;stP();mark();if(row.status=='pago'&&window.docs&&await yes('Pagamento confirmado! Gerar o recibo agora?')){await gravar(1);window.docs.reciboOrc(row)}return}
   if(a=='add'){d.itens.push({d:'',q:'1',v:''});itP();const l=qa('.o80i');l[l.length-1].querySelector('textarea').focus();mark();return}
   if(a=='rm'){const i=+b.closest('.o80i').dataset.i;d.itens.splice(i,1);itP();tots();pxP();mark();return}
   if(a=='cfg'){const bc=$('bCfg');if(bc){await sair();bc.click()}return}
   if(a=='pix'){if(window.pay75){await sair();window.pay75.manager()}return}
-  if(a=='pdf'){await garante();pdfGo(row,true);return}
-  if(a=='ver'){await garante();if(isLocal()||row._p){const dc=await mkPDF(row);window.open(dc.output('bloburl'),'_blank')}else window.open(linkDe(row.id),'_blank');return}
+  if(a=='pdf'){await garante();pdfGo(row,false);return}
+  if(a=='ver'){await folha();return}
   if(a=='lk'){await garante();if(isLocal()||row._p){tst('Entre na sua conta e conecte à internet para gerar o link');return}try{await navigator.clipboard.writeText(linkDe(row.id));tst('Link copiado')}catch(x){prompt('Copie o link:',linkDe(row.id))}return}
   if(a=='wa'){await garante();const lk=(!isLocal()&&!row._p)?linkDe(row.id):'',ph=foneWa(d.cli.tel);window.open('https://wa.me/'+ph+'?text='+encodeURIComponent(msgWa(row,lk)),'_blank');if(!lk)tst('Sem link online: enviei o resumo em texto');return}
   if(a=='del'){if(!(await yes('Excluir este orçamento? Não dá para desfazer.')))return;clearTimeout(tm);dirty=0;if(await apagar(row.id)){gone=true;o.remove();window.orc80&&window.orc80.refresh()}return}});
@@ -213,10 +253,10 @@ let tab=localStorage.getItem(TK)=='o'?'o':'p',filt='todos',busca='';
 const painel=()=>$('o80');
 async function novoOrc(){const emp=await empGet();if(!ROWS.length)await listar();const row={id:nid(),num:proxNum(),status:'pendente',cliente:null,total:0,dados:novoD(emp),criado:new Date().toISOString(),atualizado:new Date().toISOString()};editor(row,true)}
 async function abrir(id){let r=ROWS.find(x=>x.id==id);const f=await pegar(id);if(!f){tst('Sem internet: abra este orçamento uma vez com conexão para usá-lo offline');return}editor(f,false)}
-function pintar(){const p=painel();if(!p)return;const R=ROWS,cnt=k=>R.filter(x=>x.status==k).length,sm=k=>R.filter(x=>x.status==k).reduce((s,x)=>s+(+x.total||0),0);
+function pintar(){const p=painel();if(!p)return;const R=ROWS.map(x=>x.status=='concluido'?{...x,status:'pago'}:x),cnt=k=>R.filter(x=>x.status==k).length,sm=k=>R.filter(x=>x.status==k).reduce((s,x)=>s+(+x.total||0),0);
  const L=R.filter(x=>(filt=='todos'||x.status==filt)&&(!busca||(String(x.cliente||'').toLowerCase().includes(busca)||String(x.num).includes(busca))));
- p.innerHTML=`<div class="o80sum">${Object.entries(ST).map(([k,v])=>`<div style="background:${v[3]};color:${v[2]}"><small>${v[1]} ${v[0]}s</small><b>${brl(sm(k))}</b><small>${cnt(k)} orçamento(s)</small></div>`).join('')}</div>
- <div class="o80bar"><input id="o80q" class="in" placeholder="🔎 Buscar por cliente ou número" value="${E(busca)}"><button data-f="todos" class="${filt=='todos'?'on':''}">Todos (${R.length})</button>${Object.entries(ST).map(([k,v])=>`<button data-f="${k}" class="${filt==k?'on':''}">${v[1]} ${v[0]}s (${cnt(k)})</button>`).join('')}</div>
+ p.innerHTML=`<div class="o80sum">${Object.entries(ST).map(([k,v])=>`<div style="background:${v[3]};color:${v[2]}"><small>${v[1]} ${v[0]}</small><b>${brl(sm(k))}</b><small>${cnt(k)} orçamento(s)</small></div>`).join('')}</div>
+ <div class="o80bar"><input id="o80q" class="in" placeholder="🔎 Buscar por cliente ou número" value="${E(busca)}"><button data-f="todos" class="${filt=='todos'?'on':''}">Todos (${R.length})</button>${Object.entries(ST).map(([k,v])=>`<button data-f="${k}" class="${filt==k?'on':''}">${v[1]} ${v[0]} (${cnt(k)})</button>`).join('')}</div>
  <div>${L.length?L.map(r=>{const s=ST[r.status]||ST.pendente,c=r.cli||(r.dados&&r.dados.cli)||{},emi=r.emi||(r.dados&&r.dados.emi)||r.atualizado;return`<div class="o80c" data-o="${r.id}"><div class="o80n">${r.num}</div><div class="o80m"><b>${E(r.cliente||'Sem cliente')}</b><small>Emitido em ${fd(emi)}${r._p?' • 📴 pendente':''}</small><strong>${brl(r.total)}</strong></div><div class="o80a"><button class="o80s" data-s="${r.id}" style="background:${s[3]};color:${s[2]}">${s[1]} ${s[0]}</button><div class="q">${c.tel?`<button data-w="${r.id}" aria-label="WhatsApp do cliente">📲</button>`:''}<button data-c="${r.id}" aria-label="Duplicar">⧉</button><button data-x="${r.id}" aria-label="Excluir">🗑</button></div></div></div>`}).join(''):`<div class="o80vz">🧾 ${R.length?'Nenhum orçamento neste filtro.':'Nenhum orçamento ainda.<br>Toque em <b>Novo orçamento</b> para criar o primeiro, sem precisar de planta.'}</div>`}</div>
  <button class="btn or o80fab" data-n>＋ Novo orçamento</button>`}
 async function carregar(){const p=painel();if(!p)return;if(!ROWS.length)ROWS=cLoad();pintar();await listar();pintar()}
@@ -230,12 +270,12 @@ function injeta(){const gr=$('gr');if(!gr||$('o80'))return;const tb=document.cre
  p.addEventListener('click',async e=>{const t=e.target;
   if(t.closest('[data-n]'))return novoOrc();
   const f=t.closest('[data-f]');if(f&&f.tagName=='BUTTON'){filt=f.dataset.f;return pintar()}
-  const s=t.closest('[data-s]');if(s){e.stopPropagation();const r=ROWS.find(x=>x.id==s.dataset.s),n={pendente:'aprovado',aprovado:'concluido',concluido:'pendente'}[r.status]||'pendente';
+  const s=t.closest('[data-s]');if(s){e.stopPropagation();const r=ROWS.find(x=>x.id==s.dataset.s),n={pendente:'enviado',enviado:'aprovado',aprovado:'pago',pago:'cancelado',cancelado:'pendente'}[r.status]||'pendente';
    const old=r.status;r.status=n;r.atualizado=new Date().toISOString();pintar();
    if(isLocal()){cPut(r,false)}else if(online()){try{const x=await rq('/rest/v1/orcamentos?id=eq.'+r.id,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:n,atualizado:r.atualizado})});if(!x.ok)throw 0;cPut(r,false)}catch(x){r.status=old;pintar();tst('Não consegui mudar o status')}}
    else{r.status=old;pintar();tst('Precisa de internet para mudar o status aqui; abra o orçamento')}return}
   const w=t.closest('[data-w]');if(w){e.stopPropagation();const r=ROWS.find(x=>x.id==w.dataset.w),f2=await pegar(r.id);if(!f2)return tst('Abra este orçamento uma vez com internet');const lk=(!isLocal()&&!f2._p)?linkDe(f2.id):'';window.open('https://wa.me/'+foneWa(f2.dados.cli.tel)+'?text='+encodeURIComponent(msgWa(f2,lk)),'_blank');return}
-  const c=t.closest('[data-c]');if(c){e.stopPropagation();const f2=await pegar(c.dataset.c);if(!f2)return tst('Abra este orçamento uma vez com internet');const d=JSON.parse(JSON.stringify(f2.dados));d.emi=hoje();d.val=hoje(15);d.snap=null;const n={id:nid(),num:proxNum(),status:'pendente',cliente:f2.cliente,total:f2.total,dados:d,criado:new Date().toISOString(),atualizado:new Date().toISOString()};await put(n);tst('Orçamento duplicado');pintar();return}
+  const c=t.closest('[data-c]');if(c){e.stopPropagation();const f2=await pegar(c.dataset.c);if(!f2)return tst('Abra este orçamento uma vez com internet');const d=JSON.parse(JSON.stringify(f2.dados));d.emi=hoje();d.val=addD(d.emi,parseInt(d.vd)||7);d.snap=null;d.cli={nome:'',doc:'',tel:'',mail:'',end:'',bairro:'',cep:'',cidade:'',uf:''};const n={id:nid(),num:proxNum(),status:'pendente',cliente:null,total:f2.total,dados:d,criado:new Date().toISOString(),atualizado:new Date().toISOString()};await put(n);tst('Duplicado: informe o novo cliente');editor(n,false);return}
   const x=t.closest('[data-x]');if(x){e.stopPropagation();if(await yes('Excluir este orçamento?')){if(await apagar(x.dataset.x))pintar()}return}
   const o=t.closest('[data-o]');if(o)abrir(o.dataset.o)});
  const top=document.querySelector('#vP .top'),fb=$('bFb');if(top&&fb&&!$('bOrc80')){const b=document.createElement('button');b.id='bOrc80';b.className='btn ghost';b.title='Orçamentos';b.innerHTML='🧾<span class="lb">&nbsp;Orçamentos</span>';b.onclick=()=>{if(typeof show=='function'&&$('vP').classList.contains('hidden'))show('vP');aba('o');scrollTo(0,0)};fb.before(b)}
@@ -254,11 +294,11 @@ async function pub(id){document.title='Orçamento • DC CAD Pro';const pg=docum
  <div class="k"><b>🧾 Itens</b>${its.map((x,i)=>`<div class="li"><div><b>${i+1}. ${E(x.d||'Item')}</b><small>${E(x.q||1)} × ${brl(pn(x.v))}</small></div><b>${brl(pn(x.q)*pn(x.v))}</b></div>`).join('')||'<p class="o80vz">Sem itens.</p>'}
   <div class="li"><span>Subtotal</span><b>${brl(c.sub)}</b></div>${c.dc?`<div class="li"><span>Desconto</span><b>- ${brl(c.dc)}</b></div>`:''}${c.ac?`<div class="li"><span>Acréscimo</span><b>${brl(c.ac)}</b></div>`:''}
   <div class="o80to"><span>TOTAL</span><b>${brl(c.tot)}</b></div></div>
- ${d.obs?`<div class="k"><b>📝 Observações</b><p style="font-size:14px;margin:6px 0 0;white-space:pre-line">${E(d.obs)}</p></div>`:''}
+ ${d.pgto?`<div class="k"><b>💳 Condições de pagamento</b><p style="font-size:14px;margin:6px 0 0">${E(d.pgto)}</p></div>`:''}${d.obs?`<div class="k"><b>📝 Observações</b><p style="font-size:14px;margin:6px 0 0;white-space:pre-line">${E(d.obs)}</p></div>`:''}
  ${sn?`<div class="k" style="text-align:center"><b>💳 Pague com Pix</b><div style="width:210px;max-width:70%;margin:10px auto;border:1px solid #dbe3ec;border-radius:12px;overflow:hidden">${qrSvg(sn.code)}</div><div style="font-size:18px;font-weight:800">${brl(c.tot)}</div><small style="color:#64748b;display:block;margin:4px 0 10px">${E(sn.titular)}${sn.chave?'<br>'+E(sn.tipo)+': '+E(sn.chave):''}</small><button class="btn or" style="width:100%;min-height:50px" data-cp>📋 Copiar Pix copia e cola</button></div>`:''}
  <p style="text-align:center;color:#94a3b8;font-size:12px;margin-top:16px">Gerado com DC CAD Pro • dccadpro.com</p>
  <div class="cta">${wa?`<a href="https://wa.me/${wa}?text=${encodeURIComponent('Olá! Sobre o orçamento nº '+j.num+'.')}" target="_blank" rel="noopener" style="flex:1;background:#16a34a">💬 Falar no WhatsApp</a>`:''}<button data-pdf style="width:${wa?'110px':'100%'};background:#0f2a43">📄 PDF</button></div></div>`;
- pg.addEventListener('click',async ev=>{if(ev.target.closest('[data-cp]')){try{await navigator.clipboard.writeText(sn.code);tst('Pix copia e cola copiado')}catch(x){prompt('Copie o código Pix:',sn.code)}}if(ev.target.closest('[data-pdf]'))pdfGo(row,true)})}
+ pg.addEventListener('click',async ev=>{if(ev.target.closest('[data-cp]')){try{await navigator.clipboard.writeText(sn.code);tst('Pix copia e cola copiado')}catch(x){prompt('Copie o código Pix:',sn.code)}}if(ev.target.closest('[data-pdf]'))pdfGo(row,false)})}
 
 window.orc80={open:()=>{aba('o')},novo:novoOrc,refresh:()=>{if(tab=='o')carregar()}};
 {const m=location.pathname.match(/^\/orcamento\/([a-z0-9]{8,16})\/?$/i);if(m)pub(m[1].toLowerCase());else{injeta();addEventListener('online',()=>{pushPend().then(()=>{if(tab=='o'&&!$('vP').classList.contains('hidden'))carregar()})})}}
