@@ -75,7 +75,7 @@ const css=document.createElement('style');css.textContent=`
 .o80s{flex:none;font-size:11px;font-weight:800;padding:6px 10px;border-radius:99px;min-height:34px;white-space:nowrap}
 .o80a{display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex:none}.o80a .q{display:flex;gap:6px}.o80a .q button{width:40px;height:40px;border-radius:10px;border:1px solid var(--ln);background:#fff;font-size:17px}
 .o80fab{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:30;border-radius:99px;padding:0 24px;min-height:54px;font-size:15px;box-shadow:0 10px 26px #f26b2166}
-.o80vz{text-align:center;color:var(--mut);padding:36px 10px;font-size:14px;line-height:1.5}
+ html:not(.mob) .o80fab{display:none} html.mob #bNewO{display:none!important} html.mob .o80fab{bottom:calc(78px + env(safe-area-inset-bottom));z-index:45} .o80vz{text-align:center;color:var(--mut);padding:36px 10px;font-size:14px;line-height:1.5}
 .o80{position:fixed;inset:0;z-index:88;background:#f5f7fa;display:flex;flex-direction:column;font-family:Inter,system-ui,sans-serif;color:#1b2a3a}
 .o80h{display:flex;align-items:center;gap:8px;padding:calc(8px + env(safe-area-inset-top)) 10px 8px;background:#fff;border-bottom:1px solid var(--ln)}.o80h b{flex:1;min-width:0;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.o80h small{font-size:11px;color:var(--mut);white-space:nowrap}.o80h .btn{min-height:44px}
 .o80b{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:12px 12px 24px}.o80b>div{max-width:760px;margin:0 auto}
@@ -261,10 +261,11 @@ function pintar(){const p=painel();if(!p)return;const R=ROWS.map(x=>x.status=='c
  <button class="btn or o80fab" data-n>＋ Novo orçamento</button>`}
 async function carregar(){const p=painel();if(!p)return;if(!ROWS.length)ROWS=cLoad();pintar();await listar();pintar()}
 function aba(t){tab=t;try{localStorage.setItem(TK,t)}catch(e){}const p=painel(),vp=$('vP');if(!p||!vp)return;p.classList.toggle('on',t=='o');
- $('gr').style.display=t=='o'?'none':'';['bNew','bImp74','bPf74'].forEach(i=>{const b=$(i);if(b)b.style.display=t=='o'?'none':''});
+ $('gr').style.display=t=='o'?'none':'';['bNew','bImp74','bPf74'].forEach(i=>{const b=$(i);if(b)b.style.display=t=='o'?'none':''});{const bo=$('bNewO');if(bo)bo.style.display=t=='o'?'':'none'}
  const h=vp.querySelector('h2'),s=h&&h.parentElement.querySelector('p');if(h)h.textContent=t=='o'?'Orçamentos':'Meus projetos';if(s)s.textContent=t=='o'?'Crie, envie e acompanhe seus orçamentos.':'Abra um projeto ou comece um novo.';
  document.querySelectorAll('.o80t button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));if(t=='o'&&ses)carregar()}
 function injeta(){const gr=$('gr');if(!gr||$('o80'))return;const tb=document.createElement('div');tb.className='o80t';tb.innerHTML='<button data-t="p">📐 Projetos</button><button data-t="o">🧾 Orçamentos</button>';gr.before(tb);const p=document.createElement('div');p.id='o80';gr.after(p);
+ {const bn=$('bNew');if(bn&&!$('bNewO')){const b=document.createElement('button');b.id='bNewO';b.className='btn or ml-auto py-2.5 px-5';b.textContent='＋ Novo orçamento';b.style.display='none';b.onclick=novoOrc;bn.after(b)}}
  tb.onclick=e=>{const b=e.target.closest('button');if(b)aba(b.dataset.t)};
  p.addEventListener('input',e=>{if(e.target.id=='o80q'){busca=e.target.value.trim().toLowerCase();const c=e.target.selectionStart;pintar();const i=$('o80q');i.focus();try{i.setSelectionRange(c,c)}catch(x){}}});
  p.addEventListener('click',async e=>{const t=e.target;
@@ -300,6 +301,14 @@ async function pub(id){document.title='Orçamento • DC CAD Pro';const pg=docum
  <div class="cta">${wa?`<a href="https://wa.me/${wa}?text=${encodeURIComponent('Olá! Sobre o orçamento nº '+j.num+'.')}" target="_blank" rel="noopener" style="flex:1;background:#16a34a">💬 Falar no WhatsApp</a>`:''}<button data-pdf style="width:${wa?'110px':'100%'};background:#0f2a43">📄 PDF</button></div></div>`;
  pg.addEventListener('click',async ev=>{if(ev.target.closest('[data-cp]')){try{await navigator.clipboard.writeText(sn.code);tst('Pix copia e cola copiado')}catch(x){prompt('Copie o código Pix:',sn.code)}}if(ev.target.closest('[data-pdf]'))pdfGo(row,false)})}
 
-window.orc80={open:()=>{aba('o')},novo:novoOrc,refresh:()=>{if(tab=='o')carregar()}};
+/* v8.3: cria/atualiza um orçamento (modelo planilha com Pix) a partir de um projeto do diagrama */
+async function fromProject(o){const emp=await empGet();if(!ROWS.length)await listar();
+ const its=(o.itens||[]).map(x=>({d:String(x.d||''),q:String(Math.round((+x.q||0)*1000)/1000).replace('.',','),v:String(Math.round((+x.v||0)*100)/100).replace('.',',')}));
+ let row=o.id?await pegar(o.id):null;const now=new Date().toISOString();
+ if(row&&row.dados){const d=norm(row.dados);d.itens=its.length?its:d.itens;row.dados=d;row.total=calc(d).tot;row.atualizado=now}
+ else{const d=novoD(emp);d.cli={...d.cli,nome:o.cli||'',doc:o.doc||'',tel:o.tel||'',end:o.end||''};const vd=parseInt(o.vd)||15;d.vd=String(vd);d.val=addD(d.emi,vd);if(its.length)d.itens=its;if(+o.desc>0)d.desc={v:String(o.desc).replace('.',','),t:'%'};d.pgto=o.pgto||'';d.obs=o.obs||'';
+  row={id:nid(),num:proxNum(),status:'pendente',cliente:d.cli.nome||null,total:calc(d).tot,dados:d,criado:now,atualizado:now}}
+ await put(row);editor(row,false);return row.id}
+window.orc80={open:()=>{aba('o')},novo:novoOrc,refresh:()=>{if(tab=='o')carregar()},fromProject};
 {const m=location.pathname.match(/^\/orcamento\/([a-z0-9]{8,16})\/?$/i);if(m)pub(m[1].toLowerCase());else{injeta();addEventListener('online',()=>{pushPend().then(()=>{if(tab=='o'&&!$('vP').classList.contains('hidden'))carregar()})})}}
 })();

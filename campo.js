@@ -107,9 +107,11 @@ CD={1.5:3,2.5:3.7,4:4.3,6:4.9,10:6.2,16:7.4,25:9.2,35:10.6,50:12.5,70:14.5},
 CT=[[16,12.4],[20,16.4],[25,21],[32,27.4],[40,34.8],[50,44],[60,55]],
 mxB=iz=>[...BRK].reverse().find(b=>b<=iz)||'—';
 const ar=d=>Math.PI/4*d*d;
+const BT=[[1.5,'10 A',1270,2200],[2.5,'16 A a 20 A',2540,4400],[4,'25 A',3175,5500],[6,'32 A',4064,7040],[10,'40 A a 50 A',6350,11000],[16,'63 A',8001,13860]],
+bw=n=>'Até '+Number(n).toLocaleString('pt-BR')+' W';
 function guiaBit(b){
- b.innerHTML=`<p class="cp-nt">Cobre, isolação PVC 70 °C, método B1 (eletroduto embutido em alvenaria), 30 °C. A coluna <b>Disjuntor máx.</b> é o maior disjuntor comercial que não passa da capacidade do cabo (2 condutores carregados). O dimensionamento final depende da carga, do agrupamento e da queda de tensão.</p>
- <div class="cp-sc"><table class="cp-t"><tr><th>Cabo mm²</th><th>Iz 2 cond. (A)</th><th>Iz 3 cond. (A)</th><th>Disjuntor máx.</th><th>Uso típico</th></tr>${SEC.map((s,i)=>`<tr><td>${String(s).replace('.',',')}</td><td>${nf(IZ2[i],1)}</td><td>${nf(IZ3[i],1)}</td><td class="hi">${mxB(IZ2[i])} A</td><td class="l">${E(USO[s]||'')}</td></tr>`).join('')}</table></div>
+ b.innerHTML=`<p class="cp-nt">Cobre, isolação PVC 70 °C, método B1 (eletroduto embutido em alvenaria). A potência máxima é o disjuntor máximo da faixa multiplicado pela tensão (ex.: 20 A × 127 V = 2.540 W). O dimensionamento final depende da carga, do agrupamento de circuitos e da queda de tensão.</p>
+ <div class="cp-sc"><table class="cp-t"><tr><th>Bitola do cabo (mm²)</th><th>Disjuntor recomendado</th><th>Potência máxima em 127 V</th><th>Potência máxima em 220 V</th></tr>${BT.map(r=>`<tr><td>${String(r[0]).replace('.',',')}</td><td class="hi">${r[1]}</td><td>${bw(r[2])}</td><td>${bw(r[3])}</td></tr>`).join('')}</table></div>
  <p class="cp-nt">Mínimos da NBR 5410: 1,5 mm² em iluminação e 2,5 mm² em força (cobre). Queda de tensão máxima: 4% até o ponto mais distante (instalação alimentada pela rede). DR de 30 mA obrigatório em áreas molhadas, tomadas externas e circuitos de TUG/TUE em geral.</p>`}
 function guiaDuto(b){
  const need=(s,n)=>{const a=n*ar(CD[s]);const d=CT.find(c=>a<=.4*ar(c[1]));return{d,pct:d?Math.round(a/ar(d[1])*100):null}};
