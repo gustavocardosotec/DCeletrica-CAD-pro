@@ -1,0 +1,14 @@
+/* ===== v8.3: celular ===== */
+.mob #vH .hnav{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;flex-wrap:wrap;overflow:hidden;padding:calc(10px + env(safe-area-inset-top)) 12px 10px}
+.mob #vH .hnav .logo{grid-column:1/-1;justify-content:center;font-size:17px;flex:none;min-width:0}
+.mob #vH .hnav>span[style]{display:none}
+.mob #vH .hnav .hnv{justify-content:center;padding:0 6px;min-height:46px;font-size:13px;white-space:nowrap;min-width:0}
+.mob #vH .hnav .btn{justify-content:center;padding:0 6px!important;min-height:46px;font-size:14px!important;min-width:0}
+/* botões flutuantes ficavam atrás da barra inferior */
+.mob #bNew{bottom:calc(78px + env(safe-area-inset-bottom))!important;z-index:45!important}
+/* orçamento do projeto (editável) */
+.ob83{border:1px solid var(--ln);border-radius:12px;padding:10px;margin-top:8px;background:#fff}
+.ob83 .r1{display:flex;gap:6px;align-items:center}.ob83 .r1 .in{flex:1;min-width:0;font-weight:600}
+.ob83 .r2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:6px}
+.ob83 label{font-size:11px;font-weight:700;color:var(--mut);min-width:0}.ob83 .in{padding:7px 8px;min-width:0}
+.ob83 .x{flex:none;min-width:42px;min-height:42px;padding:0}

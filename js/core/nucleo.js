@@ -1,0 +1,784 @@
+/* DC CAD Pro v9.0 alfa — nucleo.js: rotas, nuvem (Supabase REST), login Google, conta, projetos, editor, símbolos NBR, QDC
+   (bloco movido do index.html sem nenhuma alteração de lógica) */
+const $=id=>document.getElementById(id);
+/* ===== Rotas (v6.3): /pagina-inicial /login /projetos /projeto/nome ===== */
+let PL=[],rt=0;
+const slug=t=>String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'').slice(0,60)||'projeto';
+function slugs(l){const u={},o={};(l||[]).forEach(p=>{let b=slug(p.nome),k=b,n=1;while(u[k])k=b+'-'+(++n);u[k]=1;o[p.id]=k});return o}
+const pSlug=id=>slugs(PL)[id]||slug($('nm')&&$('nm').value);
+const ROTA={vH:'/pagina-inicial',vL:'/login',vP:'/projetos'};
+const show=v=>{document.body.dataset.v=v;['vH','vL','vP','vE'].forEach(i=>$(i).classList.toggle('hidden',i!=v));
+ const p=v=='vE'?'/projeto/'+pSlug(cur):ROTA[v];
+ if(location.pathname!=p){try{history[rt?'replaceState':'pushState'](null,'',p+location.search)}catch(e){}}
+ if(v=='vE')scrollTo(0,0)};
+async function rota(){
+ rt=1;const p=location.pathname.replace(/\/+$/,'')||'/',m=p.match(/^\/projeto\/([^\/]+)$/);
+ try{
+  if(!$('vE').classList.contains('hidden')&&cur&&!ro&&!(m&&pSlug(cur)==decodeURIComponent(m[1]))){try{await save()}catch(e){}}
+  if(p=='/pagina-inicial'){show('vH');return}
+  if(p=='/login'){ses?await list():show('vL');return}
+  if(!ses){if(p!='/'){try{sessionStorage.setItem('dce_next',p)}catch(e){}}show(p=='/'?'vH':'vL');return}
+  if(m){const d=await DB('?select=id,nome,atualizado,dados&order=atualizado.desc');if(d){PL=d;const sl=slugs(d),k=decodeURIComponent(m[1]),f=d.find(x=>sl[x.id]==k);if(f){ro=0;roWho='';abrirProj(f);return}}}
+  await list()
+ }finally{rt=0}}
+addEventListener('popstate',rota);
+const ask=(m,o={})=>new Promise(r=>{const e=$('mq'),i=$('mqi');$('mqt').textContent=m;i.style.display=o.inp?'':'none';i.value=o.def||'';$('mqn').style.display=o.ok?'none':'';$('mqn').textContent=o.inp?'Cancelar':'Não';$('mqy').textContent=o.ok||o.inp?'OK':'Sim';e.classList.remove('hidden');if(o.inp)setTimeout(()=>i.focus(),50);
+ const f=v=>{e.classList.add('hidden');r(v)};$('mqy').onclick=()=>f(o.inp?i.value:true);$('mqn').onclick=()=>f(o.inp?null:false);i.onkeydown=k=>{if(k.key=='Enter')$('mqy').click()}}),yes=m=>ask(m),msg=m=>ask(m,{ok:1});
+let ses=JSON.parse(localStorage.getItem('dce_ses')||'null'),cur=null,S=null,sel=null,tool='sel',drag=null,wire=null,dirty=0,timer,cw=null,hist=[],ro=0,roWho='';
+const cv=$('cv'),cx=cv.getContext('2d'),U=100,uid=()=>Math.random().toString(36).slice(2,9),esc=s=>String(s).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
+
+/* ===== Nuvem (Supabase via REST) ===== */
+const api=async(p,b)=>(await fetch(CFG.url+p,{method:'POST',headers:{apikey:CFG.key,'Content-Type':'application/json'},body:JSON.stringify(b)})).json();
+const LK='dce_local_db',lget=()=>JSON.parse(localStorage.getItem(LK)||'[]');
+async function DBL(q,o){const a=lget(),id=(q.match(/id=eq\.([^&]+)/)||[])[1],m=o.method||'GET';let r;
+ if(m=='POST'){r={id:'l'+Date.now(),...JSON.parse(o.body),atualizado:new Date().toISOString()};a.push(r);r=[r]}
+ else if(m=='PATCH'){const x=a.find(p=>p.id==id);Object.assign(x,JSON.parse(o.body));r=[x]}
+ else if(m=='DELETE'){a.splice(a.findIndex(p=>p.id==id),1);r=[]}
+ else r=a.slice().sort((x,y)=>y.atualizado.localeCompare(x.atualizado));
+ localStorage.setItem(LK,JSON.stringify(a));return r}
+const DB0=async(q,o={})=>{if(ses&&ses.access_token=='local')return DBL(q,o);const r=await fetch(CFG.url+'/rest/v1/projetos'+q,{...o,headers:{apikey:CFG.key,Authorization:'Bearer '+ses.access_token,'Content-Type':'application/json',Prefer:'return=representation'}});
+  if(r.status==401){if(!o.retry&&ses.refresh_token){const d=await api('/auth/v1/token?grant_type=refresh_token',{refresh_token:ses.refresh_token});if(d.access_token){ses=d;localStorage.setItem('dce_ses',JSON.stringify(d));return DB(q,{...o,retry:1})}}out();return null}return r.json()};
+const DB=(q,o={})=>window.v74DB?window.v74DB(DB0,q,o):DB0(q,o);
+function out(){ses=null;trk=0;acc={nivel:'usuario',dono:false};try{sessionStorage.removeItem('dce_ping');sessionStorage.removeItem('dce_spv')}catch(e){}localStorage.removeItem('dce_ses');show('vL')}
+async function auth(up){
+  $('le').textContent='';
+  if(!CFG.url){$('le').textContent='Conta não ativada neste site.';return}
+  const b={email:$('em').value.trim(),password:$('pw').value};if(up&&b.password.length<8){$('le').textContent='A senha precisa ter pelo menos 8 caracteres.';return}
+  const d=await api(up?'/auth/v1/signup':'/auth/v1/token?grant_type=password',b);
+  if(d.access_token){ses=d;localStorage.setItem('dce_ses',JSON.stringify(d));list()}
+  else if(up&&d.id)$('le').textContent='Conta criada! Enviamos um link de confirmação para o seu e-mail. Clique nele para ativar a conta.';
+  else{const m=d.error_description||d.msg||'';$('le').textContent={'Invalid login credentials':'E-mail ou senha incorretos.','Email not confirmed':'Confirme seu e-mail pelo link que enviamos.','User already registered':'Este e-mail já tem conta. Use Entrar.'}[m]||'Não foi possível concluir. Confira e-mail e senha.'}
+}
+$('bIn').onclick=()=>auth(0);$('bUp').onclick=()=>auth(1);$('bOut').onclick=out;$('bNv').onclick=()=>$('mNv').classList.remove('hidden');$('bNvX').onclick=$('bNvY').onclick=()=>$('mNv').classList.add('hidden');
+$('bRc').onclick=async()=>{const e=$('em').value.trim();if(!e||!CFG.url){$('le').textContent='Digite seu e-mail e clique de novo.';return}await api('/auth/v1/recover',{email:e});$('le').textContent='Se o e-mail existir, enviamos um link para criar uma nova senha.'};
+$('pw').onkeydown=e=>{if(e.key=='Enter')auth(0)};
+/* ===== Login com Google ===== */
+$('bGg').onclick=()=>{if(!CFG.url){$('le').textContent='Conta não ativada neste site.';return}location.href=CFG.url+'/auth/v1/authorize?provider=google&redirect_to='+encodeURIComponent(location.origin+'/')};
+/* Botão oficial do Google (mostra o nome do site, não o endereço do Supabase) */
+async function ggBoot(){
+ const id=CFG.googleId;if(!id||id.startsWith('COLE_')){console.warn('[Google] googleId não encontrado no config.js (arquivo antigo ou em cache?)');return}if(!window.google?.accounts?.id){console.warn('[Google] biblioteca do Google não carregou (bloqueador de anúncios?)');return}if(!crypto.subtle){console.warn('[Google] precisa de https');return}
+ const rb=new Uint8Array(16);crypto.getRandomValues(rb);const raw=[...rb].map(x=>x.toString(16).padStart(2,'0')).join('');
+ const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(raw)))].map(x=>x.toString(16).padStart(2,'0')).join('');
+ google.accounts.id.initialize({client_id:id,nonce:hash,callback:async r=>{
+  $('le').textContent='';
+  try{const d=await api('/auth/v1/token?grant_type=id_token',{provider:'google',id_token:r.credential,nonce:raw});
+   if(d.access_token){ses=d;localStorage.setItem('dce_ses',JSON.stringify(d));list()}
+   else $('le').textContent='Não foi possível entrar com o Google. Tente de novo.'}
+  catch(e){$('le').textContent='Sem conexão. Tente de novo.'}}});
+ google.accounts.id.renderButton($('bGgw'),{type:'standard',theme:'outline',size:'large',text:'continue_with',shape:'rectangular',locale:'pt-BR',width:Math.min(380,Math.max(200,innerWidth-48))});
+ $('bGgw').classList.remove('hidden');$('bGgw').classList.add('flex');$('bGg').style.display='none'}
+window.addEventListener('load',ggBoot);
+/* ===== Configurações da conta ===== */
+const UH=()=>({apikey:CFG.key,Authorization:'Bearer '+ses.access_token,'Content-Type':'application/json'});
+const temSenha=u=>(u.app_metadata?.providers||[]).includes('email')||!!u.user_metadata?.has_password;
+async function cfgAbre(){
+ if(!ses||ses.access_token=='local'){await msg('As configurações ficam disponíveis só para quem entrou com conta. Use "Criar conta" no topo.');return}
+ let u=ses.user||{};
+ try{const r=await fetch(CFG.url+'/auth/v1/user',{headers:UH()});if(r.ok){u=await r.json();ses.user=u;localStorage.setItem('dce_ses',JSON.stringify(ses))}}catch(e){}
+ if(!u.email){await msg('Sua sessão expirou. Saia e entre de novo para abrir as configurações.');return}
+ const g=(u.app_metadata?.providers||[]).includes('google'),p=temSenha(u);
+ $('cfEm').value=u.email;
+ $('cfG').innerHTML=g?'✅ <b>Google</b> ativado':'⚪ <b>Google</b> não vinculado <span style="color:#64748b">(saia e use "Continuar com Google" com este mesmo e-mail)</span>';
+ $('cfP').innerHTML=p?'✅ <b>E-mail e senha</b> ativado':'⚪ <b>E-mail e senha</b> ainda não criada';
+ $('cfT').textContent=p?'🔒 Trocar senha':'🔒 Criar uma senha';
+ $('cfOk').textContent=p?'Trocar senha':'Criar senha';
+ $('cfS0').value=$('cfS1').value=$('cfS2').value='';$('cfE').textContent='';$('cfAw').style.display=p?'':'none';
+ $('mCfg').classList.remove('hidden')}
+async function cfgSalva(){
+ const a=$('cfS1').value,b=$('cfS2').value,e=$('cfE');e.style.color='#b42318';
+ if(a.length<8){e.textContent='A senha precisa ter pelo menos 8 caracteres.';return}
+ if(a!==b){e.textContent='As senhas não são iguais.';return}
+ $('cfOk').disabled=true;
+ try{
+  if(temSenha(ses.user||{})){
+   const c=$('cfS0').value;if(!c){e.textContent='Digite sua senha atual.';$('cfOk').disabled=false;return}
+   const v=await api('/auth/v1/token?grant_type=password',{email:ses.user.email,password:c});
+   if(!v.access_token){e.textContent='A senha atual está incorreta.';$('cfOk').disabled=false;return}
+   ses={...ses,access_token:v.access_token,refresh_token:v.refresh_token};localStorage.setItem('dce_ses',JSON.stringify(ses))}
+  const r=await fetch(CFG.url+'/auth/v1/user',{method:'PUT',headers:UH(),body:JSON.stringify({password:a,data:{has_password:true}})});const d=await r.json().catch(()=>({}));
+  if(r.ok){ses.user=d;localStorage.setItem('dce_ses',JSON.stringify(ses));$('mCfg').classList.add('hidden');await msg('Senha salva ✅\n\nAgora você pode entrar com e-mail e senha ou com o Google, como preferir.')}
+  else{const m=(d.msg||d.error_description||d.message||'').toLowerCase();
+   e.textContent=m.includes('same')?'A nova senha precisa ser diferente da atual.':m.includes('reauth')||m.includes('recent')?'Por segurança, saia, entre de novo e tente outra vez.':m.includes('weak')||m.includes('password')?'Senha fraca demais. Tente uma mais forte.':'Não foi possível salvar. Tente de novo.'}
+ }catch(x){e.textContent='Sem conexão. Tente de novo.'}
+ $('cfOk').disabled=false}
+$('bCfg').onclick=cfgAbre;$('bCfgX').onclick=()=>$('mCfg').classList.add('hidden');$('cfOk').onclick=cfgSalva;
+$('cfS2').onkeydown=e=>{if(e.key=='Enter')cfgSalva()};
+
+/* ===== Lista de projetos ===== */
+async function list(){
+  {let n=null;try{n=sessionStorage.getItem('dce_next');sessionStorage.removeItem('dce_next')}catch(e){}if(n&&/^\/projeto\/[^\/]+$/.test(n)&&!rt){history.replaceState(null,'',n);return rota()}}
+  show('vP');if(!ses.user?.email&&ses.access_token!='local'){try{ses.user=await(await fetch(CFG.url+'/auth/v1/user',{headers:{apikey:CFG.key,Authorization:'Bearer '+ses.access_token}})).json()}catch(e){}}$('us').textContent=ses.access_token=='local'?'⚠️ Sem conta: projetos não salvos na nuvem (só neste aparelho)':ses.user?.email||'';paintAcc();
+  const d=await DB('?select=id,nome,atualizado,dados&order=atualizado.desc');if(!d)return;PL=d;
+  $('gr').innerHTML=d.length?d.map(p=>`<div class="card"><div class="thumb">⚡</div><button data-o="${p.id}" class="text-left w-full"><b class="text-lg">${esc(p.nome||'Sem título')}</b>
+   <div class="text-xs mt-1" style="color:#51627a">Modificado em ${new Date(p.atualizado).toLocaleString('pt-BR')}</div>
+   <div class="text-sm mt-3">${(p.dados.items||[]).filter(i=>i.t=='sym').length} símbolos &bull; ${(p.dados.items||[]).filter(i=>i.t=='room').length} cômodos</div></button>
+   <div class="flex gap-2 mt-3"><button data-c="${p.id}" class="btn ghost">⧉ Duplicar</button><button data-d="${p.id}" class="btn danger">🗑 Excluir</button></div></div>`).join(''):'<p class="text-center py-16 col-span-full" style="color:#64748b">📐 Nenhum projeto ainda. Clique em <b>Novo projeto</b>.</p>';
+  $('gr').querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>abrirProj(d.find(p=>p.id==b.dataset.o)));
+  $('gr').querySelectorAll('[data-c]').forEach(b=>b.onclick=async()=>{const p=d.find(x=>x.id==b.dataset.c);await DB('',{method:'POST',body:JSON.stringify({nome:p.nome+' (cópia)',dados:p.dados})});list()});
+  $('gr').querySelectorAll('[data-d]').forEach(b=>b.onclick=async()=>{if(await yes('Excluir este projeto?')){await DB('?id=eq.'+b.dataset.d,{method:'DELETE'});list()}});
+ track();impLocal();spVinc().then(spChk);
+}
+$('bNew').onclick=async()=>{const n=await ask('Nome do projeto:',{inp:1,def:'Casa nova'});if(!n)return;const r=await DB('',{method:'POST',body:JSON.stringify({nome:n,dados:{items:[],v:{x:80,y:80,z:1}}})});if(r&&r[0])abrirProj(r[0])};
+
+/* ===== Editor ===== */
+function abrirProj(p){cur=p.id;S=p.dados;S.items=S.items||[];S.v=S.v||{x:80,y:80,z:1};S.sh=Object.assign({g:1,r:1,t:1,f:1},S.sh);S.cfg=Object.assign({fase:127,forn:'mono'},S.cfg);S.q=Object.assign({},DQ,S.q);S.ov=S.ov||{};S.fca=S.fca||{};document.querySelectorAll('[data-s]').forEach(i=>i.checked=!!S.sh[i.dataset.s]);$('nm').value=p.nome;sel=null;hist=[JSON.stringify(S.items)];$('bMd').textContent='Medidas: '+(S.nomed?'não':'sim');pp(1);show('vE');draw();status('Aberto');markTool();rec(p)}
+$('bBk').onclick=async()=>{await save();const v=ro;ro=0;roWho='';list();if(v)$('mCt').classList.remove('hidden')};
+$('bSv').onclick=()=>save();$('bUn').onclick=undo;
+$('bMd').onclick=()=>{S.nomed=!S.nomed;$('bMd').textContent='Medidas: '+(S.nomed?'não':'sim');auto();draw()};
+$('bDu').onclick=()=>{if(!sel||sel.t=='fio'||sel.t=='cota')return;const c={...sel,x:sel.x+20,y:sel.y+20,gen:0};if(c.t=='sym')c.id=uid();S.items.push(c);sel=c;pp(1);auto();draw()};
+$('bRo').onclick=()=>{if(sel&&sel.t=='sym'){sel.rot=((+sel.rot||0)+90)%360;pp(1);auto();draw()}};
+const zoom=f=>{const W=cv.clientWidth/2,H=cv.clientHeight/2,z=Math.min(3,Math.max(.2,S.v.z*f));S.v.x=W-(W-S.v.x)/S.v.z*z;S.v.y=H-(H-S.v.y)/S.v.z*z;S.v.z=z;draw()};
+$('bZp').onclick=()=>zoom(1.2);$('bZm').onclick=()=>zoom(1/1.2);
+$('bFt').onclick=()=>{const ps=[];S.items.forEach(t=>t.t=='fio'?ps.push(...t.pts):t.t=='cota'?ps.push(t.a,t.b):t.t=='room'?ps.push([t.x,t.y],[t.x+t.w,t.y+t.h]):ps.push([t.x,t.y]));if(!ps.length)return;
+ const x0=Math.min(...ps.map(q=>q[0])),x1=Math.max(...ps.map(q=>q[0])),y0=Math.min(...ps.map(q=>q[1])),y1=Math.max(...ps.map(q=>q[1])),W=cv.clientWidth,H=cv.clientHeight,z=Math.min(3,W/(x1-x0+120),H/(y1-y0+120));
+ S.v.z=z;S.v.x=W/2-(x0+x1)/2*z;S.v.y=H/2-(y0+y1)/2*z;draw()};
+$('bAd').onclick=()=>{place({x:(cv.clientWidth/2-S.v.x)/S.v.z,y:(cv.clientHeight/2-S.v.y)/S.v.z});draw()};
+let pz=null,ts=null;const COARSE=matchMedia('(pointer:coarse)').matches,INS=()=>tool!='sel'&&tool!='pan';
+function longPress(p){if(INS()){place(p);draw();return}const t=hit(p);if(!t)return;sel=t;pp(1);draw();$('sht').textContent=LB[t.k]||(t.t=='room'?(t.h?'Cômodo':'Parede'):t.t=='fio'?'Fio / eletroduto':t.t=='txt'?'Texto':'Cota');$('sh').classList.remove('hidden')}
+$('sh').onclick=e=>{const a=e.target.dataset.a;if(e.target===$('sh')||a=='x'){$('sh').classList.add('hidden');return}if(!a)return;$('sh').classList.add('hidden');if(a=='del')del();else if(a=='qd')openQd(sel&&sel.c);else $(a).click()};
+cv.addEventListener('touchstart',e=>{e.preventDefault();if(e.touches.length>1){if(ts)clearTimeout(ts.tm);ts=null;drag=null;const[a,b]=e.touches;pz={d:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY),z:S.v.z,cx:(a.clientX+b.clientX)/2,cy:(a.clientY+b.clientY)/2,vx:S.v.x,vy:S.v.y};return}pz=null;const t=e.touches[0];
+ ts={x:t.clientX,y:t.clientY,t0:Date.now(),mv:0,lp:0,p:wpt(t)};ts.tm=setTimeout(()=>{if(ts&&!ts.mv){ts.lp=1;drag=null;navigator.vibrate&&navigator.vibrate(25);longPress(ts.p)}},500);
+ cv.dispatchEvent(new MouseEvent('mousedown',{clientX:t.clientX,clientY:t.clientY,button:0,bubbles:true}))},{passive:false});
+cv.addEventListener('touchmove',e=>{e.preventDefault();if(pz&&e.touches.length>1){const[a,b]=e.touches,r=cv.getBoundingClientRect(),d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY),mx=(a.clientX+b.clientX)/2,my=(a.clientY+b.clientY)/2,z=Math.min(3,Math.max(.2,pz.z*d/pz.d)),wx=(pz.cx-r.left-pz.vx)/pz.z,wy=(pz.cy-r.top-pz.vy)/pz.z;S.v.z=z;S.v.x=mx-r.left-wx*z;S.v.y=my-r.top-wy*z;draw();return}
+ if(pz||!ts)return;const t=e.touches[0];if(Math.hypot(t.clientX-ts.x,t.clientY-ts.y)>10){ts.mv=1;clearTimeout(ts.tm)}if(ts.lp||!ts.mv)return;dispatchEvent(new MouseEvent('mousemove',{clientX:t.clientX,clientY:t.clientY}))},{passive:false});
+cv.addEventListener('touchend',e=>{e.preventDefault();if(pz){if(!e.touches.length)pz=null;return}const s=ts;ts=null;if(!s)return;clearTimeout(s.tm);dispatchEvent(new MouseEvent('mouseup'));if(!s.lp&&!s.mv&&Date.now()-s.t0<450&&INS()){place(s.p);draw()}},{passive:false});
+cv.addEventListener('touchcancel',()=>{if(ts)clearTimeout(ts.tm);ts=null;pz=null;dispatchEvent(new MouseEvent('mouseup'))});
+$('bEnd').onclick=()=>{tool='sel';wire=null;cw=null;markTool();draw()};
+
+function status(m){$('st').textContent=ro?'👁 Só visualização • '+roWho+' • nada é salvo':m}
+async function save(){clearTimeout(timer);if(ro){status('');return}status('Salvando...');const r=await DB('?id=eq.'+cur,{method:'PATCH',body:JSON.stringify({nome:$('nm').value,dados:S,atualizado:new Date().toISOString()})});if(r){pend=0;try{localStorage.removeItem(BK())}catch(e){}}status(r?(ses.access_token=='local'?'Salvo neste aparelho ':window.v74q?'Salvo offline (sincroniza ao voltar) ':'Salvo na nuvem ')+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'Erro ao salvar')}
+const snapH=()=>{const j=JSON.stringify(S.items);if(hist[hist.length-1]!==j)hist.push(j);if(hist.length>60)hist.shift()};
+function undo(){if(hist.length<2)return;hist.pop();S.items=JSON.parse(hist[hist.length-1]);sel=null;wire=null;cw=null;pp(1);draw();status('Desfeito');pend=1;bkp();clearTimeout(timer);timer=setTimeout(save,800)}
+let pend=0;const BK=()=>'dce_bkp_'+cur,bkp=()=>{if(ro)return;try{localStorage.setItem(BK(),JSON.stringify({t:Date.now(),nome:$('nm').value,dados:S}))}catch(e){}};
+const auto=()=>{snapH();pend=1;bkp();clearTimeout(timer);status('Salvando automaticamente...');timer=setTimeout(save,800)};
+$('nm').oninput=auto;$('nm').addEventListener('change',()=>{if(cur&&!ro){const l=PL.find(x=>x.id==cur);if(l)l.nome=$('nm').value;try{history.replaceState(null,'','/projeto/'+pSlug(cur))}catch(e){}}});
+
+const NM={cx:'Caixa de passagem',camp:'Campainha',tec:'Tecla Campainha',qgd:'Quadro Geral',tb:'Tomada Baixa',tm:'Tomada Média',ta:'Tomada Alta',td:'Tomada Dupla',tue:'TUE (chuveiro/ar-cond.)',is:'Int. Simples',i3:'Int. Paralelo (Three Way)',i4:'Int. Four Way',luz:'Luminária',porta:'Porta',janela:'Janela',aber:'Abertura (sem porta)',sp:'Sensor de presença',sm:'Interruptor inteligente (Wi-Fi)',cam:'Câmera CFTV',ap:'Ponto Wi-Fi / roteador',cor:'Motor de cortina',tv:'Ponto de TV / dados'},AUT=['sp','sm','cam','ap','cor','tv'],DRK=['porta','janela','aber'],ROTK=['tb','tm','ta','td','tue','is','i3','i4','camp','tec'];
+const TUEP=[['Chuveiro',5500,220],['Airfryer',1500,127],['Ar cond.',1200,127],['Forno elétrico',2000,127],['Micro-ondas',1400,127],['Torneira elétrica',3200,220]];
+const PW={tb:'100VA',tm:'100VA',ta:'100VA',td:'200VA',tue:'5500W',luz:'100VA'},CI={tb:'2',tm:'2',ta:'2',td:'2',tue:'3',luz:'1'};
+const CATS=[
+ {n:'🖱 Ferramentas',i:[['sel','Selecionar / mover'],['pan','Mão: mover a vista']]},
+ {n:'🏠 Cômodos',i:[['room3','Cômodo 3,00 x 3,00 m'],['rect','Cômodo 4,00 x 3,00 m'],['wall','Parede livre']]},
+ {n:'🔌 Tomadas',i:['tb','tm','ta','td','tue'].map(k=>[k,NM[k]])},
+ {n:'💡 Interruptores',i:['is','i3','i4','camp','tec'].map(k=>[k,NM[k]])},
+ {n:'🔆 Iluminação & Quadro',i:['luz','qgd','cx'].map(k=>[k,NM[k]])},
+ {n:'🤖 Automação',i:AUT.map(k=>[k,NM[k]])},
+ {n:'〰️ Fiação',i:[['fio','Fio / eletroduto (clique direito em cada ponto)']]},{n:'🚪 Portas & Janelas',i:[['porta','Porta'],['janela','Janela'],['aber','Abertura (sem porta)']]},{n:'📏 Medidas',i:[['cota','Cota: clique direito nos 2 pontos']]},
+ {n:'🔤 Textos',i:[['lbl:Sala','Rótulo: Sala'],['lbl:Cozinha','Rótulo: Cozinha'],['lbl:Quarto','Rótulo: Quarto'],['lbl:Banheiro','Rótulo: Banheiro'],['txt','Texto livre']]}];
+const LB={fio:'Fio / eletroduto'};CATS.forEach(c=>c.i.forEach(([k,n])=>LB[k]=n));
+function mini(c,k){const g=c.getContext('2d');g.translate(16,15);if(ROTK.includes(k))g.rotate(-Math.PI/2);if(NM[k])sym(g,k,'#000',{p:'',c:'',cmd:'',len:26})}
+CATS.forEach(c=>{const g=document.createElement('div');g.className='grp';
+ g.innerHTML=`<button class="tb">${c.n} &#9662;</button><div class="dd">${c.i.map(([k,n])=>`<button class="it" data-k="${k}"><canvas width="32" height="30"></canvas>${n}</button>`).join('')}</div>`;
+ g.firstChild.onclick=e=>{e.stopPropagation();const o=g.classList.contains('open');cdd();if(!o)g.classList.add('open')};
+ g.querySelectorAll('.it').forEach(b=>{mini(b.firstChild,b.dataset.k);b.onclick=()=>{tool=b.dataset.k;wire=null;cw=null;cdd();markTool()}});$('tb').appendChild(g)});
+const cdd=()=>document.querySelectorAll('.grp.open').forEach(g=>g.classList.remove('open'));document.addEventListener('click',cdd);
+function markTool(){$('bEnd').style.display=$('bAd').style.display=INS()?'':'none';document.querySelectorAll('.it').forEach(b=>b.classList.toggle('on',b.dataset.k==tool));$('hint').innerHTML=tool=='sel'?'<b>Selecionar</b> &mdash; clique/toque para selecionar &bull; <b>segure</b> para opções &bull; <b>arraste a parede</b> para redimensionar &bull; arraste o cômodo/item para mover':tool=='pan'?'<b>Mão</b> &mdash; arraste para mover a vista':`Inserindo: <b>${LB[tool]}</b> &mdash; <b>botão direito / toque</b> insere &bull; esquerdo só seleciona, move e arrasta &bull; Esc encerra`}
+
+/* v6.6: legenda dos símbolos editável (texto, lado e arrastar) */
+const LBK=['is','i3','i4','camp','tec','tue','tb','tm','ta','td'];
+function lblAuto(t){const a=['is','i3','i4','camp','tec'].includes(t.k)?t.cmd:t.k=='tue'?`${t.p} ${t.v}V -${t.c}- ${t.nm||'TUE'}`:['tb','tm','ta','td'].includes(t.k)?t.p:'';return a==null?'':String(a)}
+function lblTxt(t){if(!LBK.includes(t.k))return '';return(t.lt!=null&&t.lt!=='')?String(t.lt):lblAuto(t)}
+function lblPos(t){const b=t.k=='luz'?28:t.k=='cx'?22:26;if(t.lx!=null&&t.ly!=null)return{x:t.x+t.lx,y:t.y+t.ly,al:'center'};const R=t.k=='luz'?20:t.k=='cx'?14:18,s=t.ls||'b';
+ return s=='t'?{x:t.x,y:t.y-(b-10),al:'center'}:s=='l'?{x:t.x-R,y:t.y+4,al:'right'}:s=='r'?{x:t.x+R,y:t.y+4,al:'left'}:{x:t.x,y:t.y+b,al:'center'}}
+function lblHit(p){if(!sel||sel.t!='sym'||!S.sh.r)return null;const l=lblTxt(sel);if(!l)return null;const P=lblPos(sel);cx.font='10px sans-serif';const w=cx.measureText(l).width,x0=P.al=='center'?P.x-w/2:P.al=='left'?P.x:P.x-w,r=(COARSE?10:4)/S.v.z;
+ return(p.x>=x0-r&&p.x<=x0+w+r&&p.y>=P.y-10-r&&p.y<=P.y+3+r)?{x:x0+w/2,y:P.y}:null}
+const lblPanel=()=>{const s=sel.ls||'b',m=sel.lx!=null,B=(k,i,t)=>`<button class="btn ${!m&&s==k?'or':'ghost'}" data-lado="${k}" title="${t}" style="padding:6px 0;flex:1">${i}</button>`;
+ return `<label>Texto da legenda (vazio = automático)<input class="in" data-f="lt" type="text" placeholder="${esc(lblAuto(sel))}" value="${esc(sel.lt||'')}"></label><label>Lado da legenda</label><div class="flex gap-2 mt-1">${B('t','⬆','Em cima')}${B('l','⬅','Esquerda')}${B('r','➡','Direita')}${B('b','⬇','Embaixo')}</div><div class="text-xs mt-1" style="color:#64748b">Ou arraste a legenda direto na tela (com o símbolo selecionado).</div>`};
+/* ===== Símbolos conforme legenda NBR (cauda voltada para -y = parede) ===== */
+function sym(c,k,col,t){
+ c.strokeStyle=col;c.fillStyle='#fff';c.lineWidth=1.6;c.lineCap='round';
+ const L=(a,b,d,e)=>{c.beginPath();c.moveTo(a,b);c.lineTo(d,e);c.stroke()},
+ O=(r,f,y=0)=>{c.beginPath();c.arc(0,y,r,0,7);c.fillStyle=f||'#fff';c.fill();c.stroke()},
+ T=(f,y)=>{c.beginPath();c.moveTo(-7,y);c.lineTo(7,y);c.lineTo(0,y+14);c.closePath();c.fillStyle='#fff';c.fill();
+  if(f){c.fillStyle=col;c.beginPath();c.moveTo(f==2?7:0,y);c.lineTo(-7,y);c.lineTo(f==2?0:0,y+14);if(f==2)c.lineTo(0,y+14);c.closePath();c.fill()}c.stroke()};
+ const TF=(f,y)=>{T(0,y);if(f){c.fillStyle=col;c.beginPath();c.moveTo(-7,y);c.lineTo(f==2?7:0,y);c.lineTo(f==2?0:0,y+14);c.lineTo(0,y+14);c.closePath();c.fill();c.stroke()}};
+ switch(k){
+  case 'tb':case 'tm':case 'ta':case 'tue':L(0,-14,0,k=='ta'||k=='tue'?-6:6);TF(k=='tm'?1:k=='tb'?0:2,-6);break;
+  case 'td':L(0,-14,0,-6);T(0,-6);T(0,3);break;
+  case 'is':case 'i3':case 'i4':case 'camp':case 'tec':L(0,-14,0,-7);O(7,k=='i3'?col:0);
+   if(k=='i4'){c.fillStyle=col;c.beginPath();c.arc(0,0,7,0,Math.PI);c.fill()}
+   if(k=='camp'){c.beginPath();c.arc(7,0,4,-1.2,1.2);c.stroke()}
+   if(k=='tec'){O(7);c.fillStyle=col;c.beginPath();c.arc(0,0,3,0,7);c.fill()}break;
+  case 'luz':O(14);L(-14,0,14,0);L(0,0,0,14);c.fillStyle=col;c.font='10px sans-serif';c.textAlign='center';
+   c.fillText(String(t.p).replace(/\D/g,''),0,-3);c.fillText(t.c,-6,11);c.fillText(t.cmd,7,11);break;
+  case 'qgd':c.fillRect(-16,-6,32,12);c.strokeRect(-16,-6,32,12);c.fillStyle=col;c.beginPath();c.moveTo(-16,6);c.lineTo(16,6);c.lineTo(16,-6);c.fill();break;
+  case 'cx':c.fillRect(-9,-9,18,18);c.strokeRect(-9,-9,18,18);L(-9,-9,9,9);L(9,-9,-9,9);break;
+  case 'sp':case 'sm':case 'cam':case 'ap':case 'cor':case 'tv':{const m={sp:'SP',sm:'IS',cam:'CF',ap:'WF',cor:'MC',tv:'TV'};O(12);c.fillStyle=col;c.font='bold 9px sans-serif';c.textAlign='center';c.fillText(m[k],0,3);break}
+  case 'porta':{const n=t.len||90;c.save();if(t.fl)c.scale(-1,1);if(t.fv)c.scale(1,-1);c.fillStyle='#fff';c.fillRect(-n/2,-3,n,6);L(-n/2,0,-n/2,n);c.lineWidth=1;c.beginPath();c.arc(-n/2,0,n,0,Math.PI/2);c.stroke();c.restore();break}
+  case 'aber':{const n=t.len||90;c.fillStyle='#fff';c.fillRect(-n/2,-6,n,12);c.lineWidth=1.4;L(-n/2,-7,-n/2,7);L(n/2,-7,n/2,7);c.lineWidth=.8;c.setLineDash([4,3]);L(-n/2,0,n/2,0);c.setLineDash([]);break}
+  case 'janela':{const n=t.len||90;c.fillStyle='#fff';c.fillRect(-n/2,-3,n,6);c.lineWidth=1.4;L(-n/2,-3,n/2,-3);L(-n/2,3,n/2,3);L(-n/2,0,n/2,0);break}}
+}
+/* v4.0: eletrodutos sempre em linhas retas, sem curvas */
+const ortg=p=>p,PISO=()=>S.cfg.tue!='parede';
+function lanes(){const M=new Map(),sg=[];
+ S.items.forEach((f,fi)=>{if(f.t!='fio')return;const pp=ortg(f.pts);M.set(f,new Array(pp.length-1).fill(0));pp.forEach((q,i)=>{if(!i)return;const a=pp[i-1],dx=q[0]-a[0],dy=q[1]-a[1];
+  if(Math.abs(dx)<4&&Math.abs(dy)>=4)sg.push({f,i:i-1,o:1,c:(a[0]+q[0])/2,lo:Math.min(a[1],q[1]),hi:Math.max(a[1],q[1]),fi});
+  else if(Math.abs(dy)<4&&Math.abs(dx)>=4)sg.push({f,i:i-1,o:0,c:(a[1]+q[1])/2,lo:Math.min(a[0],q[0]),hi:Math.max(a[0],q[0]),fi})})});
+ [0,1].forEach(o=>{const cl=[];sg.filter(s=>s.o==o).sort((a,b)=>a.c-b.c).forEach(s=>{const g=cl[cl.length-1];if(g&&s.c-g[g.length-1].c<=4)g.push(s);else cl.push([s])});
+  cl.forEach(g=>{if(g.length<2)return;const ov=(a,b)=>a.f!==b.f&&Math.min(a.hi,b.hi)-Math.max(a.lo,b.lo)>6;
+   g.sort((a,b)=>a.fi-b.fi);g.forEach(s=>{const u=new Set(g.filter(t=>t.ln!==undefined&&ov(s,t)).map(t=>t.ln));let n=0;while(u.has(n))n++;s.ln=n});
+   const seen=new Set();g.forEach(s=>{if(seen.has(s))return;const cp=[s];seen.add(s);for(let k=0;k<cp.length;k++)g.forEach(t=>{if(!seen.has(t)&&ov(cp[k],t)){seen.add(t);cp.push(t)}});
+    const m=1+Math.max(...cp.map(t=>t.ln));cp.forEach(t=>{M.get(t.f)[t.i]=(t.ln-(m-1)/2)*6})})})});
+ return M}
+const offs=(p,dd)=>{if(!dd||!dd.some(x=>x))return p;const vec=[],or=[];dd.forEach((d,i)=>{const a=p[i],b=p[i+1],dx=Math.abs(b[0]-a[0]),dy=Math.abs(b[1]-a[1]),o=dx<4&&dy>=4?1:dy<4&&dx>=4?0:2;or.push(o);vec.push(o==0?[0,d]:o==1?[d,0]:[0,0])});
+ return p.map((q,i)=>{const a=vec[i-1],b=vec[i];if(!a)return[q[0]+b[0],q[1]+b[1]];if(!b)return[q[0]+a[0],q[1]+a[1]];if(or[i-1]==or[i])return[q[0]+(a[0]+b[0])/2,q[1]+(a[1]+b[1])/2];return[q[0]+a[0]+b[0],q[1]+a[1]+b[1]]})};
+function wpath(c,E,P){const n=P.length,D=(a,b)=>Math.hypot(b[0]-a[0],b[1]-a[1]),U=(a,b)=>{const l=D(a,b)||1;return[(b[0]-a[0])/l,(b[1]-a[1])/l]};
+ const s0=Math.min(14,D(P[0],P[1])*.4),s1=Math.min(14,D(P[n-2],P[n-1])*.4),o0=D(E[0],P[0])>.8,o1=D(E[n-1],P[n-1])>.8;
+ c.beginPath();c.moveTo(E[0][0],E[0][1]);
+ if(o0){const u=U(P[0],P[1]);c.bezierCurveTo(E[0][0]+u[0]*s0*.9,E[0][1]+u[1]*s0*.9,P[0][0],P[0][1],P[0][0]+u[0]*s0,P[0][1]+u[1]*s0)}else c.lineTo(P[0][0],P[0][1]);
+ for(let i=1;i<n-1;i++){const r=Math.min(7,D(P[i-1],P[i])*.45,D(P[i],P[i+1])*.45);c.arcTo(P[i][0],P[i][1],P[i+1][0],P[i+1][1],r)}
+ if(o1){const u=U(P[n-2],P[n-1]);c.lineTo(P[n-1][0]-u[0]*s1,P[n-1][1]-u[1]*s1);c.bezierCurveTo(P[n-1][0],P[n-1][1],E[n-1][0]-u[0]*s1*.9,E[n-1][1]-u[1]*s1*.9,E[n-1][0],E[n-1][1])}else c.lineTo(P[n-1][0],P[n-1][1])}
+function items(c,clean){
+ const SEL='#2563eb',V=clean?{g:1,r:1,t:1,f:1}:S.sh,LBR=[];
+ const ok_=t=>t.t=='room'?0:t.k=='aber'?1:2;[...S.items].sort((a,b)=>ok_(a)-ok_(b)).forEach(t=>{const on=!clean&&t===sel,col=on?SEL:'#000';
+  if(t.t=='room'){c.strokeStyle=col;c.lineWidth=4;c.lineJoin='miter';t.h?c.strokeRect(t.x,t.y,t.w,t.h):(c.beginPath(),c.moveTo(t.x,t.y),c.lineTo(t.x+t.w,t.y),c.stroke());
+   c.fillStyle=on?SEL:'#51627a';c.font='12px sans-serif';c.textAlign='center';if(!S.nomed)c.fillText((t.w/U).toFixed(2)+' m',t.x+t.w/2,t.y-8);
+   if(t.h&&!S.nomed){c.save();c.translate(t.x+t.w+14,t.y+t.h/2);c.rotate(Math.PI/2);c.fillText((t.h/U).toFixed(2)+' m',0,0);c.restore()}
+   if(on)[[t.x,t.y],[t.x+t.w,t.y],[t.x,t.y+t.h],[t.x+t.w,t.y+t.h]].forEach(([a,b])=>{c.fillStyle='#fff';c.strokeStyle=SEL;c.lineWidth=2;c.fillRect(a-5,b-5,10,10);c.strokeRect(a-5,b-5,10,10)})}
+  else if(t.t=='cota'){if(!S.nomed){const[a,b]=[t.a,t.b],m=[(a[0]+b[0])/2,(a[1]+b[1])/2];c.strokeStyle=on?SEL:'#0b6e4f';c.lineWidth=1.2;c.beginPath();c.moveTo(...a);c.lineTo(...b);c.stroke();[a,b].forEach(q=>{c.beginPath();c.arc(q[0],q[1],3,0,7);c.stroke()});c.fillStyle=c.strokeStyle;c.font='bold 12px sans-serif';c.textAlign='center';c.fillText((Math.hypot(b[0]-a[0],b[1]-a[1])/U).toFixed(2)+' m',m[0],m[1]-6)}}
+  else if(t.t=='fio'){if(!V.f&&t!==sel)return;const tp=t.tp,k=on?SEL:'#000';
+   c.strokeStyle=k;c.lineWidth=tp=='tr'?2.6:tp=='tue'?2:t.gen?1.2:1.6;c.lineJoin='miter';c.setLineDash(tp=='tue'&&(t.sub!==undefined?t.sub:PISO())?[10,5]:[]);
+   const E=ortg(t.pts),P=E;c.beginPath();E.forEach((q,i)=>i?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1]));c.stroke();c.setLineDash([]);
+   if(tp=='tr'||tp=='tue'){c.fillStyle=k;[E[0],E[E.length-1]].forEach(q=>{c.beginPath();c.arc(q[0],q[1],3,0,7);c.fill()})}
+   if(t.lb&&V.r&&P.length>1){c.font='bold 10px sans-serif';c.textAlign='center';const w=c.measureText(t.lb).width+8,cd=[];P.forEach((q,i)=>{if(i)cd.push([q,P[i-1],Math.hypot(q[0]-P[i-1][0],q[1]-P[i-1][1])])});cd.sort((x,y)=>y[2]-x[2]);let ps=null;
+    for(const[q,a]of cd){if(ps)break;for(const f of[.5,.35,.65,.2,.8]){const X=a[0]+(q[0]-a[0])*f,Y=a[1]+(q[1]-a[1])*f;if(!LBR.some(r=>Math.abs(r[0]-X)<(r[2]+w)/2+2&&Math.abs(r[1]-Y)<17)){ps=[X,Y];break}}}
+    if(ps){const[mx_,my_]=ps;LBR.push([mx_,my_,w]);c.fillStyle='#fffffff0';c.fillRect(mx_-w/2,my_-8,w,15);c.strokeStyle=k;c.lineWidth=.8;c.strokeRect(mx_-w/2,my_-8,w,15);c.fillStyle=k;c.fillText(t.lb,mx_,my_+3)}}}
+  else if(t.t=='txt'){if(!V.t&&!on)return;c.fillStyle=col;c.font=(t.big?'bold 16px':'14px')+' sans-serif';c.textAlign='center';c.fillText(t.s,t.x,t.y+5)}
+  else{c.save();c.translate(t.x,t.y);if(t.k!='luz'&&!AUT.includes(t.k))c.rotate(t.rot*Math.PI/180);sym(c,t.k,col,t);if(on&&DRK.includes(t.k)){const n=t.len||90;[-1,1].forEach(q=>{c.fillStyle='#fff';c.strokeStyle=SEL;c.lineWidth=2;c.fillRect(q*n/2-5,-5,10,10);c.strokeRect(q*n/2-5,-5,10,10)})}c.restore();
+   const l=lblTxt(t),P=lblPos(t);
+   c.fillStyle=on?SEL:'#334155';c.font='10px sans-serif';c.textAlign=P.al;if(V.r)c.fillText(l,P.x,P.y)}
+ });
+}
+function sync(){const m={};S.items.forEach(t=>{if(t.id)m[t.id]=t});S.items.forEach(t=>{if(t.t=='fio'&&t.ids)t.ids.forEach((d,i)=>{const o=d&&m[d];if(o&&t.pts[i])t.pts[i]=[o.x,o.y]})})}
+function draw(clean){sync();if(!clean&&!rcT)rcT=setTimeout(()=>{rcT=0;renderRc()},120);
+ const d=devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;if(cv.width!=W*d||cv.height!=H*d){cv.width=W*d;cv.height=H*d}
+ cx.setTransform(d,0,0,d,0,0);cx.fillStyle='#fff';cx.fillRect(0,0,W,H);const z=S.v.z,g=20*z;
+ cx.strokeStyle='#e8edf2';cx.lineWidth=1;cx.beginPath();
+ for(let x=((S.v.x%g)+g)%g;S.sh.g&&x<W;x+=g){cx.moveTo(x,0);cx.lineTo(x,H)}for(let y=((S.v.y%g)+g)%g;S.sh.g&&y<H;y+=g){cx.moveTo(0,y);cx.lineTo(W,y)}cx.stroke();
+ cx.save();cx.translate(S.v.x,S.v.y);cx.scale(z,z);items(cx,clean);cx.restore();
+}
+
+/* ===== Encaixe, inserção e interação ===== */
+const snap=(n,g=5)=>Math.round(n/g)*g,WALLK=k=>k!='luz'&&k!='cx'&&k!='qgd'||k=='qgd';
+function snapWall(t){
+ if(t.k=='luz'||t.k=='cx'||AUT.includes(t.k))return;let best=null,bd=26;
+ S.items.forEach(r=>{if(r.t!='room')return;const ins=(a,lo,hi)=>a>=lo-26&&a<=hi+26;
+  [[ins(t.x,r.x,r.x+r.w)&&Math.abs(t.y-r.y),0],[r.h>0&&ins(t.x,r.x,r.x+r.w)&&Math.abs(t.y-r.y-r.h),180],[r.h>0&&ins(t.y,r.y,r.y+r.h)&&Math.abs(t.x-r.x),270],[r.h>0&&ins(t.y,r.y,r.y+r.h)&&Math.abs(t.x-r.x-r.w),90]]
+  .forEach(([d,rot])=>{if(d!==false&&d<bd){bd=d;best={r,rot}}})});
+ if(!best)return;const{r,rot}=best,cl=(a,l,h)=>Math.min(h,Math.max(l,a));t.rot=rot;const d=t.k=='qgd'?8:['porta','janela','aber'].includes(t.k)?0:14;
+ if(rot==0){t.y=r.y+d;t.x=cl(t.x,r.x+12,r.x+r.w-12)}if(rot==180){t.y=r.y+r.h-d;t.x=cl(t.x,r.x+12,r.x+r.w-12)}
+ if(rot==270){t.x=r.x+d;t.y=cl(t.y,r.y+12,r.y+r.h-12)}if(rot==90){t.x=r.x+r.w-d;t.y=cl(t.y,r.y+12,r.y+r.h-12)}
+}
+const wpt=e=>{const r=cv.getBoundingClientRect();return{sx:e.clientX-r.left,sy:e.clientY-r.top,x:(e.clientX-r.left-S.v.x)/S.v.z,y:(e.clientY-r.top-S.v.y)/S.v.z}};
+function place(p){let t;
+ if(tool=='sel'||tool=='pan')return;
+ if(tool=='cota'){const q=[snap(p.x),snap(p.y)];if(!cw){cw={t:'cota',a:q,b:q};S.items.push(cw);sel=cw}else{cw.b=q;cw=null;auto()}pp(1);return}
+ if(tool=='fio'){let q=[p.x,p.y];const n=S.items.filter(i=>i.t=='sym'&&Math.hypot(i.x-p.x,i.y-p.y)<24).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0];let nid=null;if(n){q=[n.x,n.y];n.id=n.id||uid();nid=n.id}
+  if(!wire){wire={t:'fio',pts:[q],ids:[nid]};S.items.push(wire)}else{wire.pts.push(q);(wire.ids=wire.ids||[]).push(nid)}sel=wire;pp(1);auto();return}
+ if(tool=='room3')t={t:'room',x:snap(p.x),y:snap(p.y),w:300,h:300};else if(tool=='rect')t={t:'room',x:snap(p.x),y:snap(p.y),w:400,h:300};
+ else if(tool=='wall')t={t:'room',x:snap(p.x),y:snap(p.y),w:300,h:0};
+ else if(tool.startsWith('lbl:'))t={t:'txt',x:p.x,y:p.y,s:tool.slice(4),big:1};
+ else if(tool=='txt'){ask('Digite o texto:',{inp:1}).then(s=>{if(!s)return;const t={t:'txt',x:p.x,y:p.y,s};S.items.push(t);sel=t;pp(1);auto();draw()});return}
+ else{t={t:'sym',k:tool,x:p.x,y:p.y,rot:0,c:CI[tool]||'',p:PW[tool]||'',cmd:'a',v:tool=='tue'&&AV().includes(220)?'220':V0(),len:90};snapWall(t)}
+ S.items.push(t);sel=t;pp(1);auto()}
+const dseg=(p,a,b)=>{const l=(b[0]-a[0])**2+(b[1]-a[1])**2||1,u=Math.max(0,Math.min(1,((p.x-a[0])*(b[0]-a[0])+(p.y-a[1])*(b[1]-a[1]))/l));return Math.hypot(p.x-a[0]-u*(b[0]-a[0]),p.y-a[1]-u*(b[1]-a[1]))};
+function hit(p){const r=(COARSE?16:8)/S.v.z;
+ for(let i=S.items.length-1;i>=0;i--){const t=S.items[i];
+  if(t.t=='sym'&&(DRK.includes(t.k)?dhit(p,t):Math.hypot(p.x-t.x,p.y-t.y)<(COARSE?26:16)))return t;if(t.t=='txt'&&Math.abs(p.x-t.x)<t.s.length*4.5+4&&Math.abs(p.y-t.y)<11)return t}
+ for(const t of S.items)if(t.t=='cota'&&!S.nomed&&dseg(p,t.a,t.b)<r)return t;for(const t of S.items)if(t.t=='fio'&&ortg(t.pts).some((q,i,A)=>i&&dseg(p,A[i-1],q)<r))return t;
+ for(let i=S.items.length-1;i>=0;i--){const t=S.items[i];if(t.t!='room')continue;if(p.x>=t.x-r&&p.x<=t.x+t.w+r&&p.y>=t.y-r&&p.y<=t.y+t.h+r)return t}
+ return null}
+const corner=p=>{if(!sel||sel.t!='room')return -1;const r=(COARSE?20:9)/S.v.z;return[[sel.x,sel.y],[sel.x+sel.w,sel.y],[sel.x,sel.y+sel.h],[sel.x+sel.w,sel.y+sel.h]].findIndex(([a,b])=>Math.abs(p.x-a)<r&&Math.abs(p.y-b)<r)};
+const dend=p=>{if(!sel||sel.t!='sym'||!DRK.includes(sel.k))return 0;const a=(sel.rot||0)*Math.PI/180,L=(sel.len||90)/2,r=(COARSE?22:10)/S.v.z;for(const q of[-1,1])if(Math.hypot(p.x-sel.x-Math.cos(a)*q*L,p.y-sel.y-Math.sin(a)*q*L)<r)return q;return 0};
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+function dhit(p,t){const a=(t.rot||0)*Math.PI/180,dx=p.x-t.x,dy=p.y-t.y,lx=dx*Math.cos(a)+dy*Math.sin(a),ly=-dx*Math.sin(a)+dy*Math.cos(a);return Math.abs(lx)<(t.len||90)/2&&Math.abs(ly)<14}
+function roomEdge(p){const r=(COARSE?20:10)/S.v.z;for(let i=S.items.length-1;i>=0;i--){const t=S.items[i];if(t.t!='room')continue;const ix=p.x>=t.x-r&&p.x<=t.x+t.w+r,iy=p.y>=t.y-r&&p.y<=t.y+t.h+r;
+ if(!t.h){if(Math.abs(p.y-t.y)<r){if(Math.abs(p.x-t.x)<r)return{t,s:'w'};if(Math.abs(p.x-t.x-t.w)<r)return{t,s:'e'}}continue}
+ if(ix&&Math.abs(p.y-t.y)<r)return{t,s:'n'};if(ix&&Math.abs(p.y-t.y-t.h)<r)return{t,s:'s'};if(iy&&Math.abs(p.x-t.x)<r)return{t,s:'w'};if(iy&&Math.abs(p.x-t.x-t.w)<r)return{t,s:'e'}}return null}
+const nbrs=(a,s)=>{const t=6,R=[],ov=(p,q,u,v)=>Math.min(q,v)-Math.max(p,u)>0;S.items.forEach(r=>{if(r===a||r.t!='room'||!(r.h>0))return;const o={x0:r.x,y0:r.y,x1:r.x+r.w,y1:r.y+r.h};
+ if(s=='e'&&Math.abs(o.x0-(a.x+a.w))<=t&&ov(a.y,a.y+a.h,o.y0,o.y1))R.push({r,s:'w',o});
+ if(s=='w'&&Math.abs(o.x1-a.x)<=t&&ov(a.y,a.y+a.h,o.y0,o.y1))R.push({r,s:'e',o});
+ if(s=='s'&&Math.abs(o.y0-(a.y+a.h))<=t&&ov(a.x,a.x+a.w,o.x0,o.x1))R.push({r,s:'n',o});
+ if(s=='n'&&Math.abs(o.y1-a.y)<=t&&ov(a.x,a.x+a.w,o.x0,o.x1))R.push({r,s:'s',o})});return R},
+applyNb=(L,c)=>(L||[]).forEach(({r,s,o})=>{if(s=='w'){r.x=c;r.w=Math.max(20,o.x1-c)}else if(s=='e')r.w=Math.max(20,c-o.x0);else if(s=='n'){r.y=c;r.h=Math.max(20,o.y1-c)}else r.h=Math.max(20,c-o.y0)});
+let spc=0;addEventListener('keydown',e=>{if(e.code=='Space'&&!['INPUT','SELECT'].includes(e.target.tagName)&&!$('vE').classList.contains('hidden')){spc=1;e.preventDefault()}});addEventListener('keyup',e=>{if(e.code=='Space')spc=0});
+cv.addEventListener('mousemove',e=>{if(drag||!S)return;const p=wpt(e),c=corner(p);let cu='';if(tool=='pan')cu='grab';else if(lblHit(p))cu='move';else if(dend(p))cu='ew-resize';else if(c>=0)cu=(c==0||c==3)?'nwse-resize':'nesw-resize';else{const r=roomEdge(p);if(r)cu=(r.s=='w'||r.s=='e')?'ew-resize':'ns-resize'}cv.style.cursor=cu});
+cv.addEventListener('mousedown',e=>{cdd();const p=wpt(e);
+ if(e.button==2){place(p);draw();return}
+ if(e.button==1||tool=='pan'||spc){e.preventDefault();drag={m:'pan',sx:e.clientX,sy:e.clientY,vx:S.v.x,vy:S.v.y};cv.style.cursor='grabbing';return}
+ if(e.button)return;
+ const de=dend(p);if(de){const a=(sel.rot||0)*Math.PI/180,ux=Math.cos(a),uy=Math.sin(a),L=sel.len||90;drag={m:'dres',s:de,ux,uy,fx:sel.x-ux*de*L/2,fy:sel.y-uy*de*L/2};return}
+ const ci=corner(p);if(ci>=0){drag={m:'size',ci,nbx:nbrs(sel,ci&1?'e':'w'),nby:nbrs(sel,ci&2?'s':'n'),x0:sel.x,y0:sel.y,x1:sel.x+sel.w,y1:sel.y+sel.h};return}
+ const lh=lblHit(p);if(lh){drag={m:'lbl',ox:p.x-lh.x,oy:p.y-lh.y};return}
+ const t=hit(p);
+ if(t&&t.t=='room'){const ed=roomEdge(p);if(ed){sel=ed.t;pp(1);drag={m:'edge',s:ed.s,nb:nbrs(sel,ed.s),x0:sel.x,y0:sel.y,x1:sel.x+sel.w,y1:sel.y+sel.h};draw();return}}
+ if(t){sel=t;pp(1);drag={m:'move',ox:p.x-t.x,oy:p.y-t.y,x0:t.x,y0:t.y};
+  if(t.t=='room')drag.in=S.items.filter(i=>i!==t&&(i.t=='sym'||i.t=='txt')&&i.x>=t.x-20&&i.x<=t.x+t.w+20&&i.y>=t.y-20&&i.y<=t.y+t.h+20).map(i=>[i,i.x,i.y])}
+ else{sel=null;pp(1);drag={m:'pan',sx:e.clientX,sy:e.clientY,vx:S.v.x,vy:S.v.y,tap:1,p};cv.style.cursor='grabbing'}draw()});
+addEventListener('mousemove',e=>{if(!drag)return;const p=wpt(e);
+ if(drag.m=='pan'){if(Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy)>5)drag.tap=0;S.v.x=drag.vx+e.clientX-drag.sx;S.v.y=drag.vy+e.clientY-drag.sy}
+ else if(drag.m=='lbl'){sel.lx=p.x-drag.ox-sel.x;sel.ly=p.y-drag.oy-sel.y}
+ else if(drag.m=='move'&&sel.t!='fio'&&sel.t!='cota'){sel.x=p.x-drag.ox;sel.y=p.y-drag.oy;if(sel.t=='room'){sel.x=snap(sel.x);sel.y=snap(sel.y);if(drag.in)drag.in.forEach(([i,x,y])=>{i.x=x+sel.x-drag.x0;i.y=y+sel.y-drag.y0})}else if(sel.t=='sym')snapWall(sel);pp()}
+ else if(drag.m=='dres'){const pr=((p.x-drag.fx)*drag.ux+(p.y-drag.fy)*drag.uy)*drag.s,L=Math.max(30,snap(pr,5));sel.len=L;sel.x=drag.fx+drag.ux*drag.s*L/2;sel.y=drag.fy+drag.uy*drag.s*L/2;pp()}
+ else if(drag.m=='edge'){let{x0,y0,x1,y1}=drag;const w=drag.s;if(w=='w')x0=snap(p.x);if(w=='e')x1=snap(p.x);if(w=='n')y0=snap(p.y);if(w=='s')y1=snap(p.y);
+  sel.x=Math.min(x0,x1);sel.w=Math.max(20,Math.abs(x1-x0));if(sel.h){sel.y=Math.min(y0,y1);sel.h=Math.max(20,Math.abs(y1-y0))}applyNb(drag.nb,w=='w'?x0:w=='e'?x1:w=='n'?y0:y1);pp()}
+ else if(drag.m=='size'){let{x0,y0,x1,y1}=drag;const nx=snap(p.x),ny=snap(p.y);drag.ci&1?x1=nx:x0=nx;drag.ci&2?y1=ny:y0=ny;if(!sel.h)y1=y0=sel.y;
+  sel.x=Math.min(x0,x1);sel.w=Math.abs(x1-x0);sel.y=Math.min(y0,y1);sel.h=Math.abs(y1-y0);applyNb(drag.nbx,nx);applyNb(drag.nby,ny);pp()}draw()});
+addEventListener('mouseup',()=>{const d=drag;drag=null;cv.style.cursor='';if(!d)return;if(d.m!='pan')auto()});
+cv.addEventListener('wheel',e=>{e.preventDefault();const p=wpt(e),z=Math.min(3,Math.max(.3,S.v.z*(e.deltaY<0?1.1:.9)));S.v.z=z;S.v.x=p.sx-p.x*z;S.v.y=p.sy-p.y*z;draw()},{passive:false});
+addEventListener('keydown',e=>{if(e.key=='Escape'){wire=null;if(cw){S.items=S.items.filter(i=>i!==cw);cw=null;draw()}}if((e.ctrlKey||e.metaKey)&&e.key=='z'){e.preventDefault();undo()}if(['INPUT','SELECT'].includes(e.target.tagName)||$('vE').classList.contains('hidden'))return;if((e.key=='Delete'||e.key=='Backspace')&&sel)del()});
+function del(){const c=sel&&sel.t=='sym'?sel.c:null;S.items=S.items.filter(i=>i!==sel);if(c&&!S.items.some(i=>i.t=='sym'&&i.c==c))renum();sel=null;wire=null;pp(1);auto();draw()}
+
+function fullGap(t){const R=S.items.filter(r=>r.t=='room'&&r.h>0);for(const a of R)for(const b of R){if(a===b)continue;let v=null;
+ if(Math.abs(a.x+a.w-b.x)<=14&&Math.abs(t.x-(a.x+a.w))<30)v=[Math.max(a.y,b.y),Math.min(a.y+a.h,b.y+b.h),1];else if(Math.abs(a.y+a.h-b.y)<=14&&Math.abs(t.y-(a.y+a.h))<30)v=[Math.max(a.x,b.x),Math.min(a.x+a.w,b.x+b.w),0];
+ if(v&&v[1]-v[0]>=30){const lo=v[0],hi=v[1];t.k='aber';if(v[2]){t.rot=90;t.y=(lo+hi)/2;t.x=(a.x+a.w+b.x)/2}else{t.rot=0;t.x=(lo+hi)/2;t.y=(a.y+a.h+b.y)/2}t.len=hi-lo;return true}}return false}
+/* ===== Painel de propriedades ===== */
+function pp(rb){const el=$('pp');if(!sel){el.classList.add('hidden');return}el.classList.remove('hidden');
+ if(!rb){el.querySelectorAll('[data-f]').forEach(i=>{if(document.activeElement!==i)i.value=/^(w|h|len)$/.test(i.dataset.f)?(sel[i.dataset.f]/U).toFixed(2):(sel[i.dataset.f]??'')});return}
+ const f=(l,k,ty='text',x='')=>`<label>${l}<input class="in" data-f="${k}" type="${ty}" value="${/^(w|h|len)$/.test(k)?(sel[k]/U).toFixed(2):esc(sel[k])}" ${x}></label>`;let h='';
+ if(sel.t=='sym'&&['porta','janela','aber'].includes(sel.k))h=`<b>${NM[sel.k]}</b><label>Tipo<select class="in" data-tp>${['porta','janela','aber'].map(k=>`<option value="${k}" ${sel.k==k?'selected':''}>${NM[k]}</option>`).join('')}</select></label>${f('Largura (m)','len','number','step="0.05"')}${f('Rotação (graus)','rot','number','step="15"')}${sel.k=='porta'?'<div class="flex gap-2 mt-3"><button class="btn ghost" data-act="fl">↔ Dobradiça</button><button class="btn ghost" data-act="fv">↕ Lado</button></div>':''}<div class="flex gap-2 mt-3"><button class="btn ghost" data-act="gap">↔ Vão total (parede toda)</button></div>`;else if(sel.t=='sym'){const sw=['is','i3','i4','camp','tec','luz'].includes(sel.k),pw=!['is','i3','i4','camp','tec','qgd','cx',...AUT].includes(sel.k);
+  h=`<b>${NM[sel.k]}</b>${pw?f('Circuito (nº)','c'):''}${pw?f('Potência (100VA, 5500W)','p'):''}${sel.k=='tue'?f('Nome (Chuveiro, Ar cond.)','nm')+`<label>Carga pronta<select class="in" data-pre><option value="">Escolher...</option>${TUEP.map(([n])=>`<option>${n}</option>`).join('')}</select></label>`:''}${sw?f('Comando / tecla (a, b, c)','cmd'):''}${LBK.includes(sel.k)?lblPanel():''}
+  <label>Tensão (V)<select class="in" data-f="v">${AV().map(x=>`<option ${sel.v==x?'selected':''}>${x}</option>`).join('')}</select></label>${f('Rotação (graus)','rot','number','step="15"')}<div id="ppc" class="text-xs mt-2" style="color:#334155">${ckl()}</div>`}
+ else if(sel.t=='txt')h=`<b>Texto</b>${f('Conteúdo','s')}`;else if(sel.t=='fio'||sel.t=='cota')h=`<b>${sel.t=='fio'?'Fio / eletroduto':'Cota'}</b>`;
+ else h=`<b>${sel.h?'Cômodo':'Parede'}</b>${f('Largura (m)','w','number','step="0.05"')}${sel.h?f('Profundidade (m)','h','number','step="0.05"'):''}`;
+ el.innerHTML='<button id="bX" class="ppx btn ghost">✕</button>'+h+'<button id="bD" class="btn danger w-full mt-3">🗑 Excluir</button>';$('bD').onclick=del;$('bX').onclick=()=>{sel=null;pp(1);draw()}}
+const ckl=()=>{if(!sel||sel.t!='sym'||!sel.c)return '';const o=circs().find(x=>x.n==sel.c);return o?`Circ. ${o.n}: ${o.b} A • ${o.cabo} mm² • ${o.v} V • ${Math.round(o.w)} W`:''};
+$('pp').addEventListener('change',e=>{if(e.target.dataset.tp!==undefined&&sel){sel.k=e.target.value;pp(1);draw();auto();return}if(e.target.dataset.pre===undefined||!sel)return;const p=TUEP.find(x=>x[0]==e.target.value);if(!p)return;sel.nm=p[0];sel.p=p[1]+'W';sel.v=String(AV().includes(p[2])?p[2]:V0());pp(1);draw();auto()});
+$('pp').addEventListener('input',e=>{const f=e.target.dataset.f;if(!f||!sel)return;let v=e.target.value;if(e.target.type=='number'){v=parseFloat(v)||0;if(/^(w|h|len)$/.test(f))v=Math.round(v*U)}sel[f]=v;draw();auto();const q=$('ppc');if(q)q.textContent=ckl()});
+$('pp').addEventListener('click',e=>{const ld=e.target.closest('[data-lado]');if(ld&&sel){sel.ls=ld.dataset.lado;delete sel.lx;delete sel.ly;pp(1);draw();auto();return}const a=e.target.dataset.act;if(!a||!sel)return;if(a=='gap'){if(!fullGap(sel))msg('Coloque a abertura perto da parede entre os dois cômodos.');else pp(1);draw();auto();return}sel[a]=!sel[a];draw();auto()});
+$('bVw').onclick=e=>{e.stopPropagation();$('vw').classList.toggle('hidden')};$('vw').onclick=e=>e.stopPropagation();document.addEventListener('click',()=>$('vw').classList.add('hidden'));
+$('vw').addEventListener('change',e=>{const k=e.target.dataset.s;if(!k)return;S.sh[k]=e.target.checked;auto();draw()});
+addEventListener('resize',()=>S&&draw());
+
+/* ===== Cálculo automático do QDC ===== */
+const BR=[10,16,20,25,32,40,50,63],SEC=[1.5,2.5,4,6,10,16,25,35],IZ={1.5:17.5,2.5:24,4:32,6:41,10:57,16:76,25:101,35:125},FS=1.2,FD=.9,DQ={ig:63,idr:63,cabo:'16',dps:'1x II 275V 45kA',nome:'QDC'};
+/* NBR 5410: seção mínima 1,5 mm² (iluminação) e 2,5 mm² (tomadas e TUE); disjuntor com Ib <= In <= Iz
+   (cobre, PVC 70 °C, método B1, 2 condutores carregados: 1,5=17,5A  2,5=24A  4=32A  6=41A  10=57A  16=76A) */
+/* NBR 5410: Ib=P/V; In>=Ib*FS (folga 20%); Iz*FD>=In (agrupamento -10%); mín. 1,5 mm² (luz) e 2,5 mm² (TUG/TUE) */
+function dim(o){const Ib=o.w/o.v*FS,mb=o.k=='luz'||o.k=='tue'?10:20,ms=o.k=='luz'?1.5:2.5,b=BR.find(x=>x>=Math.max(Ib,mb))||63,s=SEC.find(x=>x>=ms&&IZ[x]*(o.fca||FD)>=b)||35;return{b,cabo:s}}
+const VG=()=>S.cfg.forn=='bi'&&S.cfg.fase==127?'127/220':String(S.cfg.fase),FG0=()=>S.cfg.forn=='bi'?'bifásico':'monofásico',fas=o=>S.cfg.forn=='bi'&&o.v>S.cfg.fase?'bifásico':'monofásico',AV=()=>S.cfg.forn=='bi'&&S.cfg.fase==127?[127,220]:[+S.cfg.fase],V0=()=>String(S.cfg.fase);
+function fixTUE(){S.items.forEach(t=>{if(t.t=='sym'&&['tb','tm','ta','td'].includes(t.k)&&(parseFloat(t.p)||0)>=1000){t.k='tue';t.nm=t.nm||'Carga dedicada'}});let mx=0;const n={};
+ S.items.forEach(t=>{if(t.t=='sym'&&PW[t.k]!==undefined&&t.c){mx=Math.max(mx,+t.c||0);n[t.c]=(n[t.c]||0)+1}});
+ S.items.forEach(t=>{if(t.t=='sym'&&t.k=='tue'&&t.c&&n[t.c]>1){n[t.c]--;t.c=String(++mx);n[t.c]=1}})}
+const cabS=o=>`${fas(o)=='bifásico'?2:1}#${o.cabo}(${o.cabo})mm²`;
+function circs(){const m={},ov=S.ov||{},al=AV();
+ S.items.filter(t=>t.t=='sym'&&PW[t.k]!==undefined&&t.c).forEach(t=>{const o=m[t.c]=m[t.c]||{n:t.c,w:0,v:0,k:t.k};o.w+=parseFloat(t.p)||0;o.v=Math.max(o.v,+t.v||0);if(t.k=='luz')o.k='luz';else if(t.k=='tue'&&o.k!='luz')o.k='tue';if(t.nm)o.nm=t.nm;if(t.dsc)o.dsc=t.dsc});
+ return Object.values(m).sort((a,b)=>a.n-b.n).map(o=>{const x=ov[o.n]||{},v0=x.v!=null?+x.v:o.v,v=al.includes(v0)?v0:+S.cfg.fase,w=x.w!=null?+x.w:o.w,fc=(S.fca||{})[o.n],a=dim({...o,v,w,fca:fc}),b=x.b!=null?+x.b:a.b,cabo=x.cabo!=null?+x.cabo:a.cabo;
+  return{...o,v,w,b,cabo,d:x.d!=null?x.d:o.dsc||(o.k=='luz'?'Iluminação':o.k=='tue'?(o.nm||'TUE'):'TUG'),ok:IZ[cabo]*(fc||FD)>=b}})}
+/* ===== Quadro, concessionária e edição manual ===== */
+const BRo=n=>BR.includes(n)?BR:[...BR,n].sort((a,b)=>a-b),opt=(a,s)=>a.map(x=>`<option ${x==s?'selected':''}>${x}</option>`).join('');
+function renderQd(){const cs=circs(),al=AV();$('qf').value=S.cfg.fase;$('qo').value=S.cfg.forn;$('qt').value=S.cfg.tue||'piso';[['qn','nome'],['qg','ig'],['qi','idr'],['qk','cabo'],['qd','dps']].forEach(([i,k])=>$(i).value=S.q[k]);
+ $('qc').innerHTML=cs.length?cs.map(o=>`<div class="qcc ${o.ok?'':'bad'}" data-n="${esc(o.n)}"><div class="flex items-center gap-2"><b>Circ. ${esc(o.n)}</b><span class="text-xs" style="color:#64748b">${o.k=='luz'?'Iluminação':o.k=='tue'?'TUE':'TUG'}${S.fca&&S.fca[o.n]?' • FCA '+S.fca[o.n]:''}</span>${o.ok?'':'<span class="text-xs" style="color:#b42318">⚠ cabo menor que o disjuntor</span>'}<button class="btn ghost ml-auto" data-r="${esc(o.n)}">↺ Auto</button></div>
+ <label>Descrição<input class="in mt-1" data-k="d" value="${esc(o.d)}"></label>
+ <div class="grid grid-cols-2 gap-2"><label>Nº do circuito<input class="in mt-1" data-k="n" type="number" min="1" value="${esc(o.n)}"></label><label>Tensão (V)<select class="in mt-1" data-k="v">${opt(al,o.v)}</select></label><label>Potência (W/VA)<input class="in mt-1" data-k="w" type="number" min="0" value="${Math.round(o.w)}"></label>
+ <label>Disjuntor (A)<select class="in mt-1" data-k="b">${opt(BRo(o.b),o.b)}</select></label><label>Cabo (mm²)<select class="in mt-1" data-k="cabo">${opt(SEC,o.cabo)}</select></label></div></div>`).join(''):'<p class="text-sm" style="color:#64748b">Nenhum circuito ainda. Gere a elétrica ou numere os pontos.</p>'}
+function mv(m){S.items.forEach(t=>{if(t.t=='sym'&&t.c&&m[t.c]!=null)t.c=m[t.c]});const f=o=>{const r={};Object.keys(o||{}).forEach(k=>r[m[k]!=null?m[k]:k]=o[k]);return r};S.ov=f(S.ov);S.fca=f(S.fca)}
+function renum(){const ns=[...new Set(S.items.filter(t=>t.t=='sym'&&PW[t.k]!==undefined&&t.c).map(t=>t.c))].sort((a,b)=>a-b),m={};ns.forEach((n,i)=>m[n]=String(i+1));mv(m)}
+function openQd(n){renderQd();$('mqd').classList.remove('hidden');if(n){const e=document.querySelector(`#qc [data-n="${n}"]`);e&&e.scrollIntoView({block:'center'})}}
+$('bQd').onclick=()=>openQd();$('qx').onclick=$('qs').onclick=()=>{fixTUE();$('mqd').classList.add('hidden');pp(1);draw();auto()};
+$('qf').onchange=$('qo').onchange=()=>{S.cfg={...S.cfg,fase:+$('qf').value,forn:$('qo').value};const a=AV();S.items.forEach(t=>{if(t.t=='sym'&&PW[t.k]!==undefined&&!a.includes(+t.v))t.v=V0()});renderQd();auto();draw()};
+[['qn','nome'],['qg','ig'],['qi','idr'],['qk','cabo'],['qd','dps']].forEach(([i,k])=>$(i).oninput=()=>{S.q[k]=$(i).value;auto()});
+$('qc').addEventListener('change',e=>{const k=e.target.dataset.k,c=e.target.closest('[data-n]'),n=c&&c.dataset.n;if(!k||!n)return;if(k=='n'){const m=String(parseInt(e.target.value)||0);if(m!='0'&&m!=n)mv({[n]:m,[m]:n});renderQd();auto();draw();return}const ov=S.ov[n]=S.ov[n]||{};let v=e.target.value;if(k!='d')v=parseFloat(v)||0;ov[k]=v;
+ if(k=='v')S.items.forEach(t=>{if(t.t=='sym'&&t.c==n)t.v=String(v)});if(k=='v'||k=='w'){delete ov.b;delete ov.cabo}renderQd();auto();draw()});
+$('qt').onchange=()=>{S.cfg.tue=$('qt').value;auto();draw()};
+$('qr').onclick=()=>{renum();renderQd();auto();draw()};
+$('qc').addEventListener('click',e=>{const n=e.target.dataset.r;if(n){delete S.ov[n];renderQd();auto()}});
+const mctx=document.createElement('canvas').getContext('2d');
+function qdcGeo(cs){const n=Math.max(cs.length,1),RH=80,Bt=50,ys=[...Array(n)].map((_,i)=>Bt+84+i*RH),ym=(ys[0]+ys[n-1])/2,bot=Math.max(ys[n-1]+52,ym+172),Rx=760;
+ let tw=170;mctx.font='bold 21px sans-serif';cs.forEach(o=>{tw=Math.max(tw,mctx.measureText(`CIRC ${o.n} - ${o.d}`).width)});mctx.font='bold 19px sans-serif';cs.forEach(o=>{tw=Math.max(tw,mctx.measureText(cabS(o)).width)});
+ return{n,ys,ym,Bt,Rx,bot,W:Rx+16+tw+12,H:bot+14}}
+function qdc(c,x,y,s,cs,Qd){const G=qdcGeo(cs),{ys,ym,Bt,Rx,bot,W}=G,Bx=90,BX=470;
+ c.save();c.translate(x,y);c.scale(s,s);c.strokeStyle='#000';c.fillStyle='#000';c.lineWidth=4;c.lineJoin='miter';c.lineCap='butt';
+ const L=(a,b,d,e)=>{c.beginPath();c.moveTo(a,b);c.lineTo(d,e);c.stroke()},tx=(t,a,b,sz=22,al='center')=>{c.font=`bold ${sz}px sans-serif`;c.textAlign=al;c.fillText(t,a,b)};
+ const dj=(a,b,t)=>{c.beginPath();c.moveTo(a,b);c.bezierCurveTo(a+12,b,a+12,b-30,a+35,b-30);c.lineTo(a+55,b-30);c.bezierCurveTo(a+78,b-30,a+78,b,a+90,b);c.stroke();L(a+45,b-40,a+45,b-20);tx(t,a+45,b-48,20)};
+ tx(Qd.nome||'QDC',Bx,40,44,'left');c.strokeRect(Bx,Bt,Rx-Bx,bot-Bt);
+ L(0,ym,120,ym);dj(120,ym,Qd.ig+' A');L(210,ym,270,ym);
+ c.strokeRect(270,ym-30,60,60);tx('DR',300,ym+10,26);c.lineWidth=3;c.strokeRect(285,ym-52,30,16);L(300,ym-36,300,ym-30);tx(Qd.idr+'A',300,ym-60,16);c.lineWidth=4;
+ L(330,ym,BX,ym);
+ L(235,ym,235,ym+40);c.strokeRect(213,ym+40,44,58);L(245,ym+48,225,ym+68);L(225,ym+68,245,ym+68);L(245,ym+68,225,ym+88);L(235,ym+98,235,ym+118);
+ [[22,0],[14,9],[6,18]].forEach(([h,o])=>L(235-h,ym+118+o,235+h,ym+118+o));
+ tx('DPS',272,ym+64,20,'left');tx(Qd.dps,272,ym+86,13,'left');
+ if(cs.length>1)L(BX,ys[0],BX,ys[cs.length-1]);
+ cs.forEach((o,i)=>{const yy=ys[i];L(BX,yy,BX+90,yy);tx('A',BX+40,yy-10,20);dj(BX+90,yy,o.b+' A');L(BX+180,yy,W-12,yy);
+  tx(`CIRC ${o.n} - ${o.d}`,Rx+16,yy-9,21,'left');tx(cabS(o),Rx+16,yy+24,19,'left')});
+ c.restore()}
+
+/* ===== Gerador automático de projeto elétrico (NBR 5410, 9.5.2) ===== */
+const TIPOS={coz:'cozinha',ban:'banheiro',wc:'banheiro',lav:'banheiro',quar:'quarto',sui:'quarto',dorm:'quarto',serv:'servico',sala:'sala',estar:'sala',jant:'sala'};
+async function gerar(){
+ const rooms=S.items.filter(t=>t.t=='room'&&t.h>0&&t.w>0);
+ const R0=rooms.filter(r=>!rooms.some(o=>o!==r&&o.w*o.h<r.w*r.h&&o.x+o.w/2>r.x&&o.x+o.w/2<r.x+r.w&&o.y+o.h/2>r.y&&o.y+o.h/2<r.y+r.h));
+ if(!R0.length){msg('Desenhe os cômodos primeiro (menu Cômodos) e, se quiser, coloque os rótulos Sala, Cozinha, Quarto e Banheiro dentro deles.');return}
+ if(S.items.some(t=>t.gen)&&!await yes('Já existe uma elétrica gerada. Ela será substituída (edições feitas nela serão perdidas). Continuar?'))return;
+ S.items=S.items.filter(t=>!t.gen);sel=null;
+ const info=[];for(const r of R0){const lb=S.items.find(t=>t.t=='txt'&&t.x>r.x&&t.x<r.x+r.w&&t.y>r.y&&t.y<r.y+r.h);
+  const nome=lb?lb.s:(await ask(`Que cômodo é este (${(r.w/U).toFixed(1)} x ${(r.h/U).toFixed(1)} m)? Digite: sala, cozinha, quarto, banheiro ou serviço`,{inp:1,def:'sala'})||'sala'),nm=nome[0].toUpperCase()+nome.slice(1);
+  if(!lb)S.items.push({t:'txt',x:r.x+r.w/2,y:r.y+r.h/2+38,s:nm,big:1});
+  const k=Object.keys(TIPOS).find(k=>nome.toLowerCase().includes(k));info.push({r,tp:TIPOS[k]||'sala',nm})}
+ /* v5.0 alfa: só 3 circuitos de base (iluminação, tomadas, chuveiro). O resto é perguntado, com Sim / Não */
+ for(const o of info){
+  if(o.tp=='sala'||o.tp=='quarto')o.ac=await yes(`${o.nm}: colocar um ponto de ar-condicionado (TUE, circuito próprio)?`);
+  if(o.tp=='cozinha')o.af=await yes(`${o.nm}: colocar um ponto para airfryer / forno elétrico (TUE, circuito próprio)?`);
+  if(o.ac||o.af)o.sub=await yes(`${o.nm}: o eletroduto dessa carga vai embutido no piso (subterrâneo, tracejado)?\n"Não" = vai pela parede/teto, em linha contínua.`)}
+ const sepC=info.some(o=>o.tp=='cozinha'||o.tp=='servico')&&await yes('Deixar as tomadas da cozinha/serviço em um circuito separado? (a NBR 5410 pede circuitos independentes nesses locais)');
+ const doors=S.items.filter(t=>t.t=='sym'&&(t.k=='porta'||t.k=='janela'||t.k=='aber')),Ls=[],D=[],Wt=[],T=[],HB=[],RM=new Map();
+ const near=(a,x,y)=>a.reduce((u,v)=>Math.hypot(u.x-x,u.y-y)<=Math.hypot(v.x-x,v.y-y)?u:v);
+ info.forEach((o,i)=>{
+  const {r,tp}=o,W=r.w,H=r.h,Pm=2*(W+H),ar=W*H/U/U,per=Pm/U,L=String.fromCharCode(97+i%26);
+  const wp=(s,d)=>{s=((s%Pm)+Pm)%Pm;if(s<W)return{x:r.x+s,y:r.y+d,rot:0};s-=W;if(s<H)return{x:r.x+W-d,y:r.y+s,rot:90};s-=H;if(s<W)return{x:r.x+W-s,y:r.y+H-d,rot:180};s-=W;return{x:r.x+d,y:r.y+H-s,rot:270}};
+  const ws=q=>Math.abs(q.y-r.y)<8&&q.x>=r.x-4&&q.x<=r.x+W+4?q.x-r.x:Math.abs(q.x-r.x-W)<8&&q.y>=r.y-4&&q.y<=r.y+H+4?W+q.y-r.y:Math.abs(q.y-r.y-H)<8&&q.x>=r.x-4&&q.x<=r.x+W+4?W+H+r.x+W-q.x:Math.abs(q.x-r.x)<8&&q.y>=r.y-4&&q.y<=r.y+H+4?2*W+H+r.y+H-q.y:null;
+  const obs=doors.map(q=>({s:ws(q),h:(q.len||90)/2})).filter(x=>x.s!==null),B=[0,W,W+H,2*W+H,Pm];
+  const ok=s=>{s=((s%Pm)+Pm)%Pm;return B.every(b=>Math.abs(s-b)>=30)&&obs.every(x=>Math.abs(s-x.s)>x.h+22)};
+  const put=(k,s0,ex)=>{let s=s0;for(let j=0;j<80;j++){const c=s0+(j%2?-1:1)*Math.ceil(j/2)*18;if(ok(c)){s=c;break}}
+   const q=wp(s,14),t={t:'sym',k,x:q.x,y:q.y,rot:q.rot,c:'',p:PW[k]||'',cmd:'a',v:V0(),len:90,gen:1,id:uid(),...ex};S.items.push(t);obs.push({s:((s%Pm)+Pm)%Pm,h:0});RM.set(t,i);return t};
+  const nl=ar>16?2:1,pw=ar<=6?100:100+60*Math.ceil((ar-6)/4),lz=[];
+  for(let j=0;j<nl;j++){const f=nl==1?.5:j?.75:.25,t={t:'sym',k:'luz',x:W>=H?r.x+W*f:r.x+W/2,y:W>=H?r.y+H/2:r.y+H*f,rot:0,c:'',p:Math.round(pw/nl)+'VA',cmd:L,v:V0(),len:90,gen:1,id:uid()};S.items.push(t);lz.push(t);Ls.push(t);RM.set(t,i)}
+  HB[i]=lz;
+  const dr=doors.find(q=>q.k=='porta'&&ws(q)!==null),sw=put('is',dr?ws(dr)+(dr.len||90)/2+30:40,{c:'',cmd:L});
+  const OUT=[],wet=['cozinha','banheiro','servico'].includes(tp),nt=tp=='banheiro'?1:Math.max(1,Math.ceil(per/(wet?3.5:5)));
+  for(let j=0;j<nt;j++){const t=put(wet?'tm':'tb',(j+.5)*Pm/nt,{p:(wet&&j<3?600:100)+'VA'});(tp=='cozinha'||tp=='servico'?Wt:D).push(t);OUT.push(t)}
+  if(tp=='banheiro'){const t=put('tue',Pm*.3,{p:'5500W',nm:'Chuveiro',v:AV().includes(220)?'220':V0(),sub:0});T.push(t)}
+  if(o.ac){const t=put('tue',Pm*.62,{p:'1200W',nm:'Ar cond.',v:V0(),sub:o.sub?1:0});T.push(t)}
+  if(o.af){const t=put('tue',Pm*.5,{p:'1500W',nm:'Airfryer',v:V0(),sub:o.sub?1:0});T.push(t)}
+  Object.assign(o,{wp,ok,Pm,OUT,sw,lz})});
+ if(!sepC){D.push(...Wt);Wt.length=0}
+ const rs=info.map(o=>o.r),mn=rs.length,mx=r=>r.x+r.w/2,my=r=>r.y+r.h/2;
+ const adj=(a,b)=>{const O=(a0,a1,b0,b1)=>Math.min(a1,b1)-Math.max(a0,b0);return(Math.abs(a.x+a.w-b.x)<=14||Math.abs(b.x+b.w-a.x)<=14)&&O(a.y,a.y+a.h,b.y,b.y+b.h)>=60||(Math.abs(a.y+a.h-b.y)<=14||Math.abs(b.y+b.h-a.y)<=14)&&O(a.x,a.x+a.w,b.x,b.x+b.w)>=60};
+ const tree=root=>{const inT=[root],ord=[root],ED=[];while(inT.length<mn){let bs=null;for(const pass of[1,0]){for(const a of inT)for(let b=0;b<mn;b++){if(inT.includes(b)||pass&&!adj(rs[a],rs[b]))continue;const d=Math.hypot(mx(rs[a])-mx(rs[b]),my(rs[a])-my(rs[b]));if(!bs||d<bs.d)bs={a,b,d}}if(bs)break}inT.push(bs.b);ord.push(bs.b);ED.push(bs)}return{ED,ord}};
+ /* QDC: se já existe um colocado por você, ele é mantido. Senão o programa testa vários lugares e fica com o melhor. */
+ const fq=S.items.find(t=>t.t=='sym'&&t.k=='qgd'&&!t.gen),cands=[];
+ if(fq)cands.push({x:fq.x,y:fq.y,rot:fq.rot||0,ci:Math.max(0,rs.findIndex(r=>fq.x>=r.x-20&&fq.x<=r.x+r.w+20&&fq.y>=r.y-20&&fq.y<=r.y+r.h+20))});
+ else info.forEach((o,i)=>[.1,.3,.5,.7,.9].forEach(f=>{const s=f*o.Pm;if(!o.ok(s))return;const q=o.wp(s,8);cands.push({x:q.x,y:q.y,rot:q.rot,ci:i})}));
+ if(!cands.length){const q=info[0].wp(info[0].Pm*.12,8);cands.push({x:q.x,y:q.y,rot:q.rot,ci:0})}
+ /* v5.0 alfa: eletrodutos retos. Preferem uma linha reta de ponto a ponto; para desviar de outro eletroduto podem ter UMA dobra em L (90°). Nunca curvas arredondadas, nunca cruzam. */
+const dP=(p,a,b)=>{const dx=b[0]-a[0],dy=b[1]-a[1],l=dx*dx+dy*dy;let u=l?((p[0]-a[0])*dx+(p[1]-a[1])*dy)/l:0;u=Math.max(0,Math.min(1,u));return Math.hypot(p[0]-a[0]-u*dx,p[1]-a[1]-u*dy)},eqp=(p,q)=>Math.abs(p[0]-q[0])<.5&&Math.abs(p[1]-q[1])<.5,
+ cc=(a,b,c)=>(c[1]-a[1])*(b[0]-a[0])-(b[1]-a[1])*(c[0]-a[0]);
+ const plan=c=>{
+  const SG=[],out=[],Q={id:'Q',x:c.x,y:c.y};let xc=0,ln=0;
+  const inside=m=>rs.some(r=>m[0]>=r.x-1&&m[0]<=r.x+r.w+1&&m[1]>=r.y-1&&m[1]<=r.y+r.h+1);
+  const opts=(a,b)=>{const A=[a.x,a.y],B=[b.x,b.y],o=[[A,B]];return o};
+  const cntP=P=>{let k=0;for(let i=1;i<P.length;i++){const A=P[i-1],B=P[i];for(const[C,D]of SG){if(eqp(A,C)||eqp(A,D)||eqp(B,C)||eqp(B,D))continue;
+    if(cc(C,D,A)*cc(C,D,B)<0&&cc(A,B,C)*cc(A,B,D)<0)k++;else if(dP(A,C,D)<6||dP(B,C,D)<6||dP(C,A,B)<6||dP(D,A,B)<6)k++}}return k};
+  const lenP=P=>P.reduce((s,q,i)=>i?s+Math.hypot(q[0]-P[i-1][0],q[1]-P[i-1][1]):0,0);
+  const best1=(a,b)=>{let r=null;for(const P of opts(a,b)){const k=cntP(P),f=k*1e4+lenP(P)+0;if(!r||f<r.f)r={P,k,f}}return r};
+  const add=(a,b,meta,r)=>{for(let i=1;i<r.P.length;i++)SG.push([r.P[i-1],r.P[i]]);xc+=r.k;ln+=lenP(r.P);out.push({...meta,pts:r.P,ids:r.P.map((_,i)=>i==0?a.id:i==r.P.length-1?b.id:null)})};
+  const pick=(L,t)=>{let r=null;for(const p of L){const q=best1(p,t);if(!r||q.f<r.f)r={...q,p}}return r};
+  const link=(L,t,meta)=>{const r=pick(L,t);add(r.p,t,meta||{},r);return r};
+  /* tronco: QDC -> luminária do cômodo do QDC, depois cômodo a cômodo (preferindo cômodos encostados) */
+  const r0=pick(HB[c.ci],Q);add(Q,r0.p,{tp:'tr',root:1},{P:r0.P.slice().reverse(),k:r0.k});out[out.length-1].ids=out[out.length-1].pts.map((_,i,A)=>i==0?Q.id:i==A.length-1?r0.p.id:null);
+  const inT=[c.ci],ord=[c.ci],ED=[];
+  while(inT.length<mn){let bs=null;for(const a of inT)for(let b=0;b<mn;b++){if(inT.includes(b))continue;for(const pa of HB[a])for(const pb of HB[b]){const q=best1(pa,pb),f=q.f+(adj(rs[a],rs[b])?0:2500);if(!bs||f<bs.f)bs={a,b,pa,pb,q,f}}}
+   inT.push(bs.b);ord.push(bs.b);ED.push({a:bs.a,b:bs.b});add(bs.pa,bs.pb,{tp:'tr',b:bs.b},bs.q)}
+  /* cargas dedicadas (chuveiro, ar-condicionado...) saem direto do quadro */
+  T.forEach(t=>{add(Q,t,{tp:'tue',t,sub:t.sub},best1(Q,t))});
+  /* dentro de cada cômodo: interruptor e tomadas ligam na luminária (estrela) */
+  info.forEach(o=>{const f0=pick(o.lz,o.sw);add(o.sw,f0.p,{},f0);const conn=[o.sw,f0.p];
+   o.lz.forEach(t=>{if(t===f0.p)return;link(conn.filter(x=>x.k=='luz'),t);conn.push(t)});
+   [...o.OUT].sort((p,q)=>Math.hypot(p.x-near(o.lz,p.x,p.y).x,p.y-near(o.lz,p.x,p.y).y)-Math.hypot(q.x-near(o.lz,q.x,q.y).x,q.y-near(o.lz,q.x,q.y).y)).forEach(t=>{
+    const c1=pick(o.lz,t);let r=c1;if(c1.k>0){const c2=pick(conn,t);if(c2.k<c1.k)r=c2}add(r.p,t,{},r);conn.push(t)})});
+  return{score:xc*1e4+ln*.2,out,xc,fl:0,c,ED,ord}};
+ let best=null;for(const c of cands){const p=plan(c);if(!best||p.score<best.score)best=p;await new Promise(r=>setTimeout(r,0))}
+ const Qs=fq||(()=>{const t={t:'sym',k:'qgd',x:best.c.x,y:best.c.y,rot:best.c.rot,c:'',p:'',cmd:'a',v:V0(),len:90,gen:1,id:uid()};S.items.push(t);return t})();if(!Qs.id)Qs.id=uid();
+ const{ED,ord}=best,ch={};ED.forEach(e=>(ch[e.a]=ch[e.a]||[]).push(e.b));const ds=i=>[i,...(ch[i]||[]).flatMap(ds)],TR=[];
+ best.out.forEach(o=>{const f={t:'fio',gen:1,pts:o.pts,ids:o.ids.map(id=>id=='Q'?Qs.id:id)};if(o.tp)f.tp=o.tp;if(o.tp=='tue')f.sub=o.sub?1:0;S.items.push(f);
+  if(o.tp=='tr')TR.push({f,rooms:o.root?ds(best.c.ci):ds(o.b)});if(o.tp=='tue')TR.push({f,t:o.t})});
+ const XN=best.xc+best.fl;
+ /* Circuitos pela NBR 5410: iluminação até 10 A (1,5 mm²), tomadas até 20 A (2,5 mm²). Base: iluminação, tomadas e chuveiro; o resto foi perguntado. */
+ let n=1;const asg=(a,cap,dsc)=>{if(!a.length)return;a.sort((p,q)=>ord.indexOf(RM.get(p))-ord.indexOf(RM.get(q)));let sum=0,g=1;const gs=[];a.forEach((t,j)=>{const w=parseFloat(t.p)||0;if(j&&sum+w>cap){n++;g++;sum=0}t.c=String(n);gs.push(g);sum+=w});a.forEach((t,j)=>t.dsc=g>1?dsc+' '+gs[j]:dsc);n++};
+ const nmW=[...new Set(Wt.map(t=>info[RM.get(t)].tp))].map(x=>x=='cozinha'?'Cozinha':'Serviço').join('/');
+ asg(Ls,1200,'Iluminação');asg(Wt,2000,'TUG '+nmW);asg(D,2400,sepC?'TUG Geral':'Tomadas (TUG)');T.forEach(t=>{t.c=String(n++);t.dsc=t.nm||'TUE'});S.ov={};fixTUE();
+ const rc=rs2=>[...new Set([...Ls,...Wt,...D].filter(t=>rs2.includes(RM.get(t))).map(t=>t.c))];TR.forEach(o=>o.cs=o.t?[o.t.c]:rc(o.rooms));
+ const FCA=[1,1,.8,.7,.65,.6,.57,.54,.52,.5];S.fca={};TR.forEach(o=>o.cs.forEach(c=>{S.fca[c]=Math.min(S.fca[c]||1,FCA[Math.min(o.cs.length,9)])}));
+ const cm={};circs().forEach(o=>cm[o.n]=o);const OD={1.5:3,2.5:3.7,4:4.3,6:4.9,10:6.4,16:7.6,25:9.6,35:10.8},ND=[[16,12],[20,16],[25,22],[32,29],[40,37],[50,47],[60,57],[75,72]];
+ pp(1);auto();draw();$('bFt').click();
+ await msg(`Projeto v5.0 alfa gerado: ${info.length} cômodos, ${n-1} circuitos.\n\nEletrodutos COMPLETAMENTE retos: uma linha reta de ponto a ponto, sem curvas, sem dobras (nem em L) e sem etiquetas por cima. O QDC ${fq?'foi mantido onde você colocou':'foi posicionado no melhor lugar entre as opções testadas'}.\n${XN?`⚠️ ${XN} cruzamento(s)/trecho(s) não puderam ser evitados. Tente mover o QDC ou ajustar os cômodos.`:'✅ Nenhum eletroduto se cruza nem se sobrepõe.'}\nBitolas já consideram o fator de agrupamento (NBR 5410, tab. 42); diâmetros dos eletrodutos com ocupação máx. de 40%.\n\nAgora é só revisar: mova, apague ou edite qualquer item. Confira sempre com a NBR 5410 e as normas da sua concessionária antes de executar.\n\nNota de atualização (v5.0 alfa): versão em testes, podem ocorrer erros.`)}
+$('bGe').onclick=gerar;
+$('bDl').onclick=()=>{if(window.v74&&window.v74.expD)window.v74.expD();else{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({nome:$('nm').value,dados:S})],{type:'application/json'}));a.download=($('nm').value||'projeto')+'.dccad';a.click()}};
+$('bUl').onclick=()=>$('fl').click();
+$('fl').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const j=JSON.parse(await f.text());if(!j.dados||!Array.isArray(j.dados.items))throw 0;if(!await yes('Substituir a planta atual pelo conteúdo do arquivo?'))return;S.items=j.dados.items;S.nomed=j.dados.nomed;S.cfg=Object.assign({fase:127,forn:'mono'},j.dados.cfg);S.q=Object.assign({},DQ,j.dados.q);S.ov=j.dados.ov||{};S.fca=j.dados.fca||{};sel=null;pp(1);auto();draw();$('bFt').click()}catch(_){msg('Arquivo inválido. Use um arquivo baixado pelo próprio site (.dce.json).')}};
+
+/* ===== Prancha final (igual ao projeto de referência) ===== */
+const LEG=['cx','camp','tec','qgd','tb','tm','ta','td','is','i3','i4','luz','porta','janela','aber'];
+async function pdfGo(hd){fixTUE();await save();const W=1240,H=877,cs=circs(),cn=document.createElement('canvas'),QG=qdcGeo(cs),qs0=Math.min(.5,595/QG.W),qy=Math.max(330,722-QG.H*qs0),qs=Math.min(qs0,(722-qy)/QG.H),Hp=qy-30;const K=matchMedia('(max-width:700px)').matches?3:5;cn.width=W*K;cn.height=H*K;const g=cn.getContext('2d');g.scale(K,K);
+ g.fillStyle='#fff';g.fillRect(0,0,W,H);g.strokeStyle='#000';
+ const ps=[];S.items.forEach(t=>t.t=='fio'?ps.push(...t.pts):t.t=='room'?ps.push([t.x,t.y],[t.x+t.w,t.y+t.h]):ps.push([t.x,t.y]));
+ if(ps.length){const x0=Math.min(...ps.map(p=>p[0]))-30,x1=Math.max(...ps.map(p=>p[0]))+30,y0=Math.min(...ps.map(p=>p[1]))-30,y1=Math.max(...ps.map(p=>p[1]))+30,
+  s=Math.min(940/(x1-x0),Hp/(y1-y0),1.4);g.save();g.translate(270+(940-(x1-x0)*s)/2-x0*s,10-y0*s);g.scale(s,s);items(g,true);g.restore()}
+ const LU=LEGu(),WU=WIREu(),yb=60+LU.length*23;LU.forEach((k,i)=>{const y=60+i*23;g.save();g.translate(28,y);if(ROTK.includes(k))g.rotate(-Math.PI/2);sym(g,k,'#000',{p:'100',c:'1',cmd:'a',len:20});g.restore();g.fillStyle='#000';g.font='bold 13px sans-serif';g.textAlign='left';g.fillText(NM[k].replace(' (Three Way)',''),62,y+4)});
+ g.font='bold 12px sans-serif';if(WU.any)g.fillText('Fase-Neutro-Retorno-Terra',20,yb+2);
+ [['tr','Eletroduto tronco (ilum./TUG)',[]],['tue',PISO()?'Eletroduto no piso (TUE)':'Eletroduto dedicado TUE',PISO()?[9,4]:[]],['rm','Ramal / derivação',[]]].filter(a=>WU[a[0]]).forEach(([k,n,d],i)=>{const y=yb+28+i*22;g.save();g.strokeStyle='#000';g.lineWidth=k=='tr'?2.6:k=='tue'?2:1.2;g.setLineDash(d);g.beginPath();g.moveTo(20,y);g.lineTo(58,y);g.stroke();g.restore();g.fillStyle='#000';g.font='bold 12px sans-serif';g.textAlign='left';g.fillText(n,66,y+4)});
+ const tot=Math.round(cs.reduce((a,o)=>a+o.w,0)),R=[['Circuito','Cabo(mm²)','Disjuntor(A)','Tensão(V)','Pot.(VA)','Fases','Descrição'],['Geral',S.q.cabo,S.q.ig,VG(),tot,FG0(),'Entrada'],['DPS',S.q.cabo,'-','-','-',FG0(),'Proteção Surtos'],['DR',S.q.cabo,S.q.idr+'A',VG(),'-',FG0(),'Proteção Choques'],...cs.map(o=>[o.n,o.cabo,o.b,o.v,Math.round(o.w),fas(o),o.d])];
+ const cw=[62,74,86,70,70,78,160],tx0=20,rows=Math.max(R.length,10),ty0=Math.min(620,862-22*rows);g.fillStyle='#000';g.font='bold 18px sans-serif';g.textAlign='left';g.fillText('Quadro de cargas',tx0,ty0-10);g.lineWidth=2.5;g.textAlign='center';
+ for(let r=0;r<rows;r++){let x=tx0;cw.forEach((w,c)=>{g.strokeRect(x,ty0+r*22,w,22);if(R[r]){g.font=(r?'':'bold ')+(r?13:12)+'px sans-serif';g.fillStyle='#000';g.fillText(R[r][c],x+w/2,ty0+r*22+16)}x+=w})}
+ qdc(g,630,qy,qs,cs,S.q);
+ const lg=hd.logo?await new Promise(r=>{const m=new Image();m.onload=()=>r(m);m.onerror=()=>r(null);m.src=hd.logo}):null,mt=hd.mat?matList(cs):null;
+ carimbo(g,hd,mt?'1/2':'1',lg);
+ if(!window.jspdf){alert('Não foi possível carregar o gerador de PDF. Verifique a internet.');return}
+ const A3=hd.papel=='A3',pgW=A3?420:297,pgH=A3?297:210,im1=cn.toDataURL('image/png');cn.width=cn.height=0;
+ const pdf=new window.jspdf.jsPDF({orientation:'landscape',unit:'mm',format:A3?'a3':'a4'});pdf.addImage(im1,'PNG',0,0,pgW,pgH);
+ if(mt){const c2=document.createElement('canvas'),K2=3;c2.width=W*K2;c2.height=H*K2;const g2=c2.getContext('2d');g2.scale(K2,K2);g2.fillStyle='#fff';g2.fillRect(0,0,W,H);matSheet(g2,hd,mt);carimbo(g2,hd,'2/2',lg);pdf.addPage(A3?'a3':'a4','landscape');pdf.addImage(c2.toDataURL('image/png'),'PNG',0,0,pgW,pgH)}
+ pdf.save(($('nm').value||'projeto')+'-prancha.pdf')}
+
+/* ===== v6.7: carimbo, lista de materiais, calculadora e resumo de carga ===== */
+function carimbo(g,hd,fl,lg){g.save();g.fillStyle='#000';g.strokeStyle='#000';g.textAlign='left';g.lineWidth=3;
+ const ft=(t,x,y,w,z=15)=>{g.font='bold '+z+'px sans-serif';while(z>9&&g.measureText(t).width>w){z--;g.font='bold '+z+'px sans-serif'}g.fillText(t,x,y)},ex=!!(hd.cli||hd.obra);
+ if(!ex){g.strokeRect(755,730,460,50);g.strokeRect(755,780,460,45);ft('Projeto: '+hd.proj,765,761,440);ft('Autor: '+hd.autor,765,808,440)}
+ else{const L=['Projeto: '+hd.proj];if(hd.cli)L.push('Cliente: '+hd.cli);if(hd.obra)L.push('Obra: '+hd.obra);L.push('Autor: '+hd.autor);const h=105/L.length;L.forEach((t,i)=>{g.strokeRect(755,730+i*h,460,h);ft(t,765,730+i*h+h/2+5,440,14)})}
+ const by=ex?835:825,bh=ex?30:40,ty=by+bh/2+5;g.strokeRect(755,by,150,bh);g.strokeRect(905,by,150,bh);g.strokeRect(1055,by,160,bh);
+ ft('Data: '+hd.data,765,ty,135);ft('Escala: '+hd.esc,915,ty,135);ft('Folha: '+fl,1065,ty,145);
+ const QR=window.v74QR;if(QR&&window.v74DrawQR){g.strokeRect(635,795,115,70);window.v74DrawQR(g,QR,664,797,66);g.save();g.fillStyle='#000';g.font='bold 9px sans-serif';g.textAlign='left';g.fillText('Ver',640,812);g.fillText('online',640,823);g.restore()}
+ if(lg){const bx=635,bY=730,bw=115,bH=QR?62:135;g.strokeRect(bx,bY,bw,bH);const r=Math.min((bw-10)/lg.width,(bH-10)/lg.height),w=lg.width*r,h2=lg.height*r;g.drawImage(lg,bx+(bw-w)/2,bY+(bH-h2)/2,w,h2)}
+ g.restore()}
+function matList(cs){const R=[],c={};S.items.forEach(t=>{if(t.t=='sym'&&!DRK.includes(t.k))c[t.k]=(c[t.k]||0)+1});
+ Object.keys(NM).filter(k=>c[k]).forEach(k=>R.push([NM[k].replace(' (Three Way)',''),c[k],'un']));
+ const m={tr:0,tue:0,rm:0};S.items.forEach(t=>{if(t.t!='fio'||!t.pts)return;let l=0;for(let i=1;i<t.pts.length;i++)l+=Math.hypot(t.pts[i][0]-t.pts[i-1][0],t.pts[i][1]-t.pts[i-1][1]);m[t.tp=='tr'||t.tp=='tue'?t.tp:'rm']+=l/U});
+ [['tr','Eletroduto tronco (ilum./TUG)'],['tue','Eletroduto TUE'],['rm','Eletroduto ramal / derivação']].forEach(([k,n])=>{if(m[k]>0)R.push([n+' (aprox.)',m[k].toFixed(1).replace('.',','),'m'])});
+ R.push(['Disjuntor geral '+S.q.ig+' A',1,'un'],['DR '+S.q.idr+' A',1,'un'],['DPS '+S.q.dps,1,'un']);
+ const b={};cs.forEach(o=>b[o.b]=(b[o.b]||0)+1);Object.keys(b).sort((x,y)=>x-y).forEach(k=>R.push(['Disjuntor '+k+' A (circuitos)',b[k],'un']));return R}
+function matSheet(g,hd,R){g.fillStyle='#000';g.strokeStyle='#000';g.textAlign='left';g.font='bold 26px sans-serif';g.fillText('Lista de materiais',20,44);g.font='14px sans-serif';g.fillText(hd.proj||'',20,68);
+ const cw=[50,470,100,80],x0=20,y0=90,n=R.length+1,rh=Math.min(26,(715-y0)/n),fz=rh>=22?14:rh>=18?12:10,rows=[['Item','Descrição','Qtd.','Unid.'],...R.map((r,i)=>[i+1,...r])];g.lineWidth=1.5;
+ rows.forEach((r,i)=>{let x=x0;cw.forEach((w,c)=>{g.strokeRect(x,y0+i*rh,w,rh);g.font=(i?'':'bold ')+fz+'px sans-serif';g.textAlign=c==1?'left':'center';g.fillText(String(r[c]),c==1?x+8:x+w/2,y0+i*rh+rh/2+fz/3);x+=w})});
+ g.textAlign='left';g.font='italic 12px sans-serif';g.fillText('Quantidades contadas no desenho; metragens aproximadas, sem sobras. Confira antes de comprar.',20,Math.min(735,y0+n*rh+22))}
+let hLogo='';const hlShow=()=>{$('hlp').textContent=hLogo?'✔ Logo carregado':'Nenhum logo escolhido';$('hlx').classList.toggle('hidden',!hLogo)};
+$('hlf').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{const i=new Image();i.onload=()=>{const m=Math.min(1,400/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(i.width*m));c.height=Math.max(1,Math.round(i.height*m));const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(i,0,0,c.width,c.height);hLogo=c.toDataURL('image/jpeg',.85);hlShow()};i.onerror=()=>{hLogo='';hlShow();alert('Não consegui abrir essa imagem.')};i.src=r.result};r.readAsDataURL(f);e.target.value=''};
+$('hlx').onclick=()=>{hLogo='';hlShow()};
+/* calculadora rápida */
+const CQE=[['Chuveiro elétrico',5500,220],['Ar-condicionado',1200,127],['Torneira elétrica',3200,220],['Geral (outra carga)',0,0]];
+function cqCalc(){const w=parseFloat($('cqP').value)||0,v=+$('cqV').value,r=$('cqR');if(w<=0||!v){r.innerHTML='<span class="text-sm" style="color:#64748b">Digite a potência para ver o resultado.</span>';return null}
+ const a=dim({k:'tue',w,v}),Ib=w/v,f=n=>String(n).replace('.',','),cell=(l,x)=>`<div><div class="text-xs" style="color:#64748b">${l}</div><b style="font-size:20px;color:#15803d">${x}</b></div>`;
+ r.innerHTML=`<div class="grid grid-cols-3 gap-2 text-center">${cell('Corrente',f(Ib.toFixed(1))+' A')}${cell('Disjuntor',a.b+' A')}${cell('Cabo',f(a.cabo)+' mm²')}</div>${Ib*FS>63?'<div class="text-xs mt-2" style="color:#b42318">⚠ Acima de 63 A: dimensione manualmente (fora da tabela padrão do site).</div>':''}<div class="text-xs mt-2" style="color:#64748b">Disjuntor com folga de 20% e cabo de cobre (PVC 70 °C, método B1), as mesmas regras do Quadro do projeto.</div>`;return{w,v}}
+$('bCalc').onclick=()=>{if(!S)return;$('cqE').innerHTML=CQE.map((e,i)=>`<option value="${i}">${e[0]}</option>`).join('');const al=AV();$('cqV').innerHTML=al.map(x=>`<option>${x}</option>`).join('');cqSet(0);$('mCalc').classList.remove('hidden')};
+function cqSet(i){const e=CQE[i];if(e[1])$('cqP').value=e[1];else $('cqP').value='';const al=AV();$('cqV').value=String(al.includes(e[2])?e[2]:al[0]);cqCalc()}
+$('cqE').onchange=()=>cqSet(+$('cqE').value);$('cqP').oninput=$('cqV').onchange=cqCalc;
+$('cqC').onclick=$('cqX').onclick=()=>$('mCalc').classList.add('hidden');
+$('cqI').onclick=async()=>{if(ro){await msg('Este projeto está só para visualização.');return}const c=cqCalc();if(!c)return;let mx=0;S.items.forEach(t=>{if(t.t=='sym'&&PW[t.k]!==undefined&&t.c)mx=Math.max(mx,+t.c||0)});
+ const e=CQE[+$('cqE').value],t={t:'sym',k:'tue',x:(cv.clientWidth/2-S.v.x)/S.v.z,y:(cv.clientHeight/2-S.v.y)/S.v.z,rot:0,c:String(mx+1),p:Math.round(c.w)+'W',cmd:'a',v:String(c.v),len:90,nm:e[1]?e[0]:'Carga'};
+ snapWall(t);S.items.push(t);sel=t;pp(1);auto();draw();$('mCalc').classList.add('hidden');status('Circuito '+t.c+' inserido no centro da tela. Arraste para o lugar certo.')};
+/* card de resumo de carga */
+var rcT=0;
+function renderRc(){const el=$('rc');if(!el||!S||$('vE').classList.contains('hidden'))return;try{
+ let col=0;try{col=localStorage.getItem('dce_rc')=='1'}catch(e){}
+ const cs=circs(),tot=cs.reduce((a,o)=>a+(+o.w||0),0),kva=n=>(n/1000).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:2});
+ if(col){el.innerHTML=`<button class="rch" data-rt="1" title="Mostrar resumo de carga">📊 <b>${kva(tot)} kVA</b> <span style="margin-left:auto">▾</span></button>`}
+ else{let bar='';
+  if(S.cfg.forn=='bi'&&tot>0){let A=0,B=0;cs.filter(o=>fas(o)=='bifásico').forEach(o=>{A+=o.w/2;B+=o.w/2});cs.filter(o=>fas(o)!='bifásico').sort((x,y)=>y.w-x.w).forEach(o=>{if(A<=B)A+=o.w;else B+=o.w});
+   const d=Math.abs(A-B)/(A+B),c=d<=.1?'#16a34a':d<=.25?'#d97706':'#dc2626',pa=Math.round(A/(A+B)*100);
+   bar=`<div class="rcb" title="Estimativa: os circuitos de 127 V são distribuídos entre as fases para equilibrar"><i style="width:${pa}%;background:${c}"></i><i style="width:${100-pa}%;background:${c};opacity:.55"></i></div><div class="rcl"><span>Fase A ${kva(A)} kVA</span><span>Fase B ${kva(B)} kVA</span></div><div class="rcl"><span>Equilíbrio estimado</span><span>${d<=.1?'bom':d<=.25?'atenção':'desequilibrado'}</span></div>`}
+  el.innerHTML=`<button class="rch" data-rt="1" title="Recolher"><b>📊 Resumo da carga</b><span style="margin-left:auto">▴</span></button><div class="rcg"><div><span>Carga total</span><b>${kva(tot)} kVA</b></div><div><span>Circuitos</span><b>${cs.length}</b></div><div style="grid-column:1/3"><span>Fornecimento</span><b style="text-transform:capitalize">${FG0()} ${VG()} V</b></div></div>${bar}`}
+ el.classList.remove('hidden')}catch(e){}}
+$('rc').onclick=e=>{if(!e.target.closest('[data-rt]'))return;let c=0;try{c=localStorage.getItem('dce_rc')=='1'}catch(x){}try{localStorage.setItem('dce_rc',c?'0':'1')}catch(x){}renderRc()};
+const nomeAut=()=>String(ses.user?.email||'').split('@')[0].replace(/[._-]+/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+$('bSh').onclick=()=>{const h=S.hdr||{};$('hp').value=$('nm').value;$('ha').value=h.autor||nomeAut();$('hd').value=h.data||new Date().toLocaleDateString('pt-BR');$('he').value=h.esc||'1:50';$('hc').value=h.cli||'';$('ho').value=h.obra||'';$('hpp').value=h.papel||'A4';$('hmt').checked=!!h.mat;hLogo=h.logo||'';hlShow();$('mh').classList.remove('hidden')};
+$('hx').onclick=()=>$('mh').classList.add('hidden');
+$('hg').onclick=()=>{S.hdr={proj:$('hp').value,autor:$('ha').value,data:$('hd').value,esc:$('he').value,cli:$('hc').value,obra:$('ho').value,papel:$('hpp').value,mat:$('hmt').checked,logo:hLogo};$('mh').classList.add('hidden');auto();pdfGo(S.hdr)};
+
+if(!CFG.url){$('frm').classList.add('hidden');$('cfgw').classList.remove('hidden');$('lm').textContent='Conta não ativada.'}
+
+
+/* ===== Salvamento automático (v3.2.1) ===== */
+function rec(p){let b=null;try{b=JSON.parse(localStorage.getItem('dce_bkp_'+p.id)||'null')}catch(e){}
+ if(!b||!b.dados||!Array.isArray(b.dados.items)||b.t<=new Date(p.atualizado).getTime()+1500)return;
+ yes('Encontramos alterações deste projeto que não chegaram a ser salvas (o site foi fechado antes). Recuperar?').then(r=>{if(r){Object.assign(S,b.dados);$('nm').value=b.nome||p.nome;sel=null;hist=[JSON.stringify(S.items)];pp(1);draw();auto()}else{try{localStorage.removeItem('dce_bkp_'+p.id)}catch(e){}}})}
+const flush=()=>{if(ro||!pend||!cur||!S||$('vE').classList.contains('hidden'))return;bkp();try{DB('?id=eq.'+cur,{method:'PATCH',keepalive:true,body:JSON.stringify({nome:$('nm').value,dados:S,atualizado:new Date().toISOString()})}).catch(()=>{})}catch(e){}};
+addEventListener('pagehide',flush);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='hidden')flush()});
+/* ===== Feedback (v3.2) ===== */
+const dev=()=>{const u=navigator.userAgent,b=/Edg\//.test(u)?'Edge':/OPR\//.test(u)?'Opera':/Firefox\//.test(u)?'Firefox':/Chrome\//.test(u)?'Chrome':/Safari\//.test(u)?'Safari':'Outro',o=/Android/.test(u)?'Android':/iPhone|iPad/.test(u)?'iOS':/Windows/.test(u)?'Windows':/Mac OS/.test(u)?'macOS':/Linux/.test(u)?'Linux':'';return b+(o?' • '+o:'')};
+/* VERSÃO: ao lançar, suba VER aqui, V no sw.js e adicione o card nas Novidades (modal #mNv, neste arquivo) */
+const VER='9.0 alfa',TF={erro:'🐞 Erro',ideia:'💡 Ideia',elogio:'👏 Elogio'};
+const FH=()=>({apikey:CFG.key,Authorization:'Bearer '+(ses&&ses.access_token&&ses.access_token!='local'?ses.access_token:CFG.key),'Content-Type':'application/json'});
+$('bFb').onclick=$('bFb2').onclick=()=>{$('fbm').value='';$('fbn').value=ses&&ses.access_token!='local'&&ses.user&&ses.user.email?nomeAut():'';$('fbe').textContent='';$('mFb').classList.remove('hidden')};
+$('fbx').onclick=()=>$('mFb').classList.add('hidden');
+$('fbs').onclick=async()=>{const m=$('fbm').value.trim();if(m.length<5){$('fbe').textContent='Escreva um pouco mais para a gente entender. 🙂';return}
+ if(!CFG.url){$('fbe').textContent='O envio ainda não está ativado neste site.';return}
+ $('fbs').disabled=true;
+ try{const r=await fetch(CFG.url+'/rest/v1/feedbacks',{method:'POST',headers:{...FH(),Prefer:'return=minimal'},body:JSON.stringify({tipo:$('fbt').value,mensagem:m.slice(0,2000),nome:$('fbn').value.trim().slice(0,80)||null,versao:VER,email:ses&&ses.access_token!='local'&&ses.user&&ses.user.email?ses.user.email:'sem conta',aparelho:COARSE?'celular':'computador',navegador:dev(),resolucao:innerWidth+'x'+innerHeight,tela:$('vE').classList.contains('hidden')?'projetos':'editor',projeto:$('vE').classList.contains('hidden')?null:($('nm').value||null)})});
+  $('mFb').classList.add('hidden');await msg(r.ok?'Obrigado! 💙 Seu feedback foi enviado.':'Não foi possível enviar agora. Tente de novo mais tarde.')}catch(e){$('fbe').textContent='Sem conexão. Tente de novo.'}
+ $('fbs').disabled=false};
+/* Administrador: só os e-mails da lista ADMINS veem os feedbacks (o Supabase também bloqueia a leitura para os demais) */
+const ADMINS=['gustavo.cardoso.tec@gmail.com'],isAdm=e=>ADMINS.includes(String(e||'').toLowerCase());let fbAll=[],fbRes=0;
+async function admLoad(){$('adl').textContent='Carregando...';
+ try{const r=await fetch(CFG.url+'/rest/v1/feedbacks?select=*&order=criado.desc',{headers:FH()}),d=await r.json();if(!r.ok||!Array.isArray(d))throw 0;fbAll=d;admDraw()}
+ catch(e){$('adl').textContent='Não foi possível carregar. Confira se a tabela e as regras foram criadas no Supabase.'}}
+let fbF='todos';
+function admDraw(){const ab=fbAll.filter(f=>!f.resolvido).length;
+ $('adn').innerHTML=`📥 <b>${ab}</b> em aberto • ✅ ${fbAll.length-ab} resolvido(s) • total ${fbAll.length}`;
+ document.querySelectorAll('#adf [data-ft]').forEach(b=>{const on=b.dataset.ft==fbF;b.classList.toggle('or',on);b.classList.toggle('ghost',!on)});
+ const l=fbAll.filter(f=>(fbRes||!f.resolvido)&&(fbF=='todos'||f.tipo==fbF)),I=(k,v)=>v?`<div><span style="color:#64748b">${k}:</span> ${esc(v)}</div>`:'';
+ $('adl').innerHTML=l.length?l.map(f=>{const d=new Date(f.criado);return `<div class="qcc" style="${f.resolvido?'opacity:.55':''}"><div class="flex items-center gap-2 flex-wrap"><b>${TF[f.tipo]||esc(f.tipo)}</b>${f.resolvido?'<span class="text-xs" style="color:#15803d">✅ resolvido</span>':''}<span class="text-xs ml-auto" style="color:#64748b">${d.toLocaleDateString('pt-BR')} às ${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</span></div>
+ <p class="text-sm mt-2" style="white-space:pre-wrap">${esc(f.mensagem)}</p>
+ <div class="text-xs grid grid-cols-2 gap-1 mt-2" style="color:#334155">${I('👤 Nome',f.nome)}${I('✉️ E-mail',f.email)}${I('🏷️ Versão',f.versao)}${I('📱 Aparelho',f.aparelho)}${I('🌐 Navegador',f.navegador)}${I('🖥️ Tela',f.resolucao)}${I('📍 Enviado de',f.tela)}${I('📁 Projeto aberto',f.projeto)}</div>
+ <div class="flex gap-2 mt-2"><button class="btn ghost" data-ok="${f.id}">${f.resolvido?'↺ Reabrir':'✓ Resolvido'}</button><button class="btn danger" data-rm="${f.id}">🗑</button></div></div>`}).join(''):'<p class="text-sm" style="color:#64748b;margin-top:12px">Nenhum feedback por aqui. 🎉</p>'}
+$('adf').onclick=e=>{const t=e.target.dataset.ft;if(t){fbF=t;admDraw()}};
+$('bAdmM').onclick=e=>{e.stopPropagation();$('admW').classList.toggle('open')};$('admM').onclick=()=>$('admW').classList.remove('open');document.addEventListener('click',e=>{if(!$('admW').contains(e.target))$('admW').classList.remove('open')});
+$('bAdm').onclick=()=>{$('mAd').classList.remove('hidden');admLoad()};$('adx').onclick=()=>$('mAd').classList.add('hidden');$('adu').onclick=admLoad;
+$('adr').onclick=()=>{fbRes=!fbRes;$('adr').textContent=fbRes?'🙈 Ocultar resolvidos':'👁 Mostrar resolvidos';admDraw()};
+$('adl').addEventListener('click',async e=>{const ok=e.target.dataset.ok,rm=e.target.dataset.rm;
+ if(ok){const f=fbAll.find(x=>x.id==ok);await fetch(CFG.url+'/rest/v1/feedbacks?id=eq.'+ok,{method:'PATCH',headers:FH(),body:JSON.stringify({resolvido:!f.resolvido})});admLoad()}
+ if(rm&&await yes('Apagar este feedback?')){await fetch(CFG.url+'/rest/v1/feedbacks?id=eq.'+rm,{method:'DELETE',headers:FH()});admLoad()}});
+/* ===== v5.1.1: controle interno (contas, níveis, visitantes sem conta) ===== */
+const NIVEIS={usuario:'👤 Usuário',admin:'🛡️ Admin'}; /* novo nível: adicione aqui e no SQL (veja supabase_controle.sql) */
+const LIM_MB=500,LIM_MAU=50000; /* limites do plano do Supabase: confira no seu painel e ajuste aqui */
+let acc={nivel:'usuario',dono:false},trk=0,impBusy=0,ctAll=[],ctRes=null,ctOpen={};
+const DID=(()=>{let d=null;try{d=localStorage.getItem('dce_did')}catch(e){}if(!d||!/^[0-9a-f-]{36}$/.test(d)){d=(window.crypto&&crypto.randomUUID&&crypto.randomUUID())||'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c=='x'?r:r&3|8).toString(16)});try{localStorage.setItem('dce_did',d)}catch(e){}}return d})();
+const rpc=(n,b)=>fetch(CFG.url+'/rest/v1/rpc/'+n,{method:'POST',headers:FH(),body:JSON.stringify(b||{})});
+const rpcJ=async(n,b)=>{const r=await rpc(n,b),t=await r.text();let d=null;try{d=t?JSON.parse(t):null}catch(e){}if(!r.ok)throw d||{};return d};
+function paintAcc(){const loc=ses&&ses.access_token=='local',em=ses&&ses.user&&ses.user.email,dono=!loc&&(acc.dono||isAdm(em)),adm=!loc&&(acc.nivel=='admin'||isAdm(em));
+ $('bSpA').style.display=adm?'':'none';if(adm&&Date.now()-spAT>3000){spAT=Date.now();spAdmChk()}
+ $('bAdm').style.display=adm?'':'none';$('bCt').style.display=dono?'':'none';$('admW').style.display=(adm||dono)?'':'none';$('bCa').style.display=loc?'':'none';
+ if(dono)$('us').textContent='👑 Dono do site • '+em;else if(adm)$('us').textContent='🛡️ Admin • '+em}
+/* Conta cada APARELHO uma vez (não importa quantas vezes entre) e registra o acesso das contas */
+async function track(){if(trk||!CFG.url||!ses)return;trk=1;const loc=ses.access_token=='local',dv=COARSE?'celular':'computador';
+ try{const cont=!sessionStorage.getItem('dce_ping');if(cont)sessionStorage.setItem('dce_ping','1');
+  if(cont)rpc('registrar_visita',{p_device:DID,p_aparelho:dv,p_navegador:dev(),p_resolucao:innerWidth+'x'+innerHeight,p_projetos:lget().length,p_conta:!loc}).catch(()=>{});
+  if(!loc){const r=await rpc('registrar_acesso',{p_aparelho:dv,p_contar:cont});if(r.ok){const d=await r.json();if(d&&d.nivel)acc=d}}
+ }catch(e){}paintAcc()}
+/* Quem usou sem conta e depois entrou numa conta: oferece levar os projetos do aparelho para a nuvem */
+async function impLocal(){if(!ses||ses.access_token=='local'||impBusy)return;const a=lget();if(!a.length)return;
+ let no=null;try{no=localStorage.getItem('dce_imp_no')}catch(e){}if(no==String(a.length))return;
+ impBusy=1;const pl=a.length>1;
+ if(await yes(`☁️ Encontramos ${a.length} projeto${pl?'s':''} feito${pl?'s':''} neste aparelho, sem conta.\n\nQuer enviar para a sua conta e guardar na nuvem?`)){
+  let ok=0;const rest=[];
+  for(const p of a){const r=await DB('',{method:'POST',body:JSON.stringify({nome:p.nome,dados:p.dados})});if(Array.isArray(r)&&r[0])ok++;else rest.push(p)}
+  try{localStorage.setItem(LK,JSON.stringify(rest))}catch(e){}
+  await msg(rest.length?`Enviamos ${ok} projeto(s). ${rest.length} não conseguiram subir agora e continuam salvos neste aparelho.`:'Pronto! Seus projetos agora estão na nuvem. ✅');
+  impBusy=0;list();return}
+ try{localStorage.setItem('dce_imp_no',String(a.length))}catch(e){}impBusy=0}
+$('bCa').onclick=async()=>{if(await yes('Vamos para a tela de criar conta. Depois de entrar, o site oferece enviar os projetos deste aparelho para a nuvem.\n\nContinuar?'))out()};
+/* Painel do dono */
+const fB=b=>b>=1073741824?(b/1073741824).toFixed(2)+' GB':b>=1048576?(b/1048576).toFixed(1)+' MB':Math.max(1,Math.round(b/1024))+' KB';
+const fD=d=>d?new Date(d).toLocaleDateString('pt-BR')+' '+new Date(d).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'—';
+const bar=p=>{p=Math.min(100,Math.max(0,p));const c=p>=85?'#b42318':p>=60?'#d97706':'#15803d';return `<div style="height:10px;border-radius:99px;background:#e5ebf2;overflow:hidden;margin-top:6px"><div style="width:${p}%;height:100%;background:${c}"></div></div>`};
+const TL=(n,l)=>`<div class="qcc" style="margin-top:0;text-align:center"><div style="font-size:22px;font-weight:800;color:#0f2a43">${n}</div><div class="text-xs" style="color:#64748b">${l}</div></div>`;
+const N=x=>Number(x||0).toLocaleString('pt-BR');
+async function ctLoad(re){$('ctn').textContent='Carregando...';
+ try{const[r,c]=await Promise.all([rpcJ('admin_resumo'),rpcJ('admin_contas')]);ctRes=r;ctAll=c;ctDraw();ctList();if(re)ctProj(re)}
+ catch(e){$('ctn').innerHTML='Não foi possível carregar. Rode o arquivo <b>supabase_controle.sql</b> no Supabase (SQL Editor) e tente de novo.';$('ctl').innerHTML=''}}
+function ctDraw(){const r=ctRes,pDb=r.bytes_banco/(LIM_MB*1048576)*100,pMau=r.ativas_30d/LIM_MAU*100,per=r.contas?r.bytes_projetos/r.contas:0,sobra=LIM_MB*1048576-r.bytes_banco,est=per>0?Math.max(0,Math.floor(sobra/per)):null,vt=r.vis_convertidos+r.vis_sem_conta,cv=vt?Math.round(r.vis_convertidos/vt*100):0;
+ $('ctn').innerHTML=`<b class="text-sm block">📊 Resumo</b><div class="grid grid-cols-3 gap-2 mt-2">${TL(N(r.contas),'contas')}${TL(N(r.ativas_7d),'ativas em 7 dias')}${TL(N(r.novas_7d),'novas em 7 dias')}${TL(N(r.projetos),'projetos')}${TL(fB(r.bytes_projetos),'em projetos')}${TL(N(r.admins),'admins')}</div>
+ <b class="text-sm block mt-4">🗄️ Capacidade do plano (estimativa)</b>
+ <div class="qcc"><div>Banco de dados: <b>${fB(r.bytes_banco)}</b> de ${LIM_MB} MB (${pDb.toFixed(1)}%)</div>${bar(pDb)}
+ <div class="text-xs mt-2" style="color:#334155">${est===null?'Ainda sem projetos para estimar.':`Cada conta ocupa em média <b>${fB(per)}</b> de projetos. Ainda cabem cerca de <b>${N(est)}</b> contas parecidas.${r.contas<10?' (Poucas contas ainda: estimativa grosseira.)':''}`}</div>
+ <div class="mt-3">Contas ativas no mês: <b>${N(r.ativas_30d)}</b> de ${N(LIM_MAU)} (${pMau.toFixed(2)}%)</div>${bar(pMau)}
+ <div class="text-xs mt-2" style="color:#64748b">Limites do plano grátis do Supabase. Confira no painel de lá e ajuste LIM_MB e LIM_MAU no código se mudar de plano.</div></div>
+ <b class="text-sm block mt-4">🚪 Sem conta (contado por aparelho)</b>
+ <div class="grid grid-cols-3 gap-2 mt-2">${TL(N(r.vis_sem_conta),'aparelhos sem conta')}${TL(r.vis_acessos_medio,'entradas por aparelho')}${TL(N(r.vis_projetos_locais),'projetos só no aparelho')}${TL(cv+'%','viraram conta ('+N(r.vis_convertidos)+')')}${TL(r.vis_total?Math.round(r.vis_celular/r.vis_total*100)+'%':'0%','usam celular')}${TL(N(r.vis_7d),'aparelhos ativos 7d')}</div>
+ <div class="text-xs mt-2" style="color:#64748b">Cada aparelho conta uma vez, não importa quantas vezes entre. Se a pessoa limpar os dados do navegador, vira um aparelho novo, então o número é uma boa estimativa, não exato.</div>`}
+function ctList(){const q=$('ctq').value.trim().toLowerCase(),me=String(ses&&ses.user&&ses.user.email||'').toLowerCase(),l=ctAll.filter(c=>!q||String(c.email||'').toLowerCase().includes(q));
+ $('ctl').innerHTML=l.length?l.map(c=>{const eu=String(c.email||'').toLowerCase()==me||isAdm(c.email),op=Object.keys(NIVEIS).map(k=>`<option value="${k}"${c.nivel==k?' selected':''}>${NIVEIS[k]}</option>`).join('');
+  return `<div class="qcc"><div class="flex items-center gap-2 flex-wrap"><b style="word-break:break-all">${esc(c.email||'(sem e-mail)')}</b><span class="text-xs ml-auto" style="color:#64748b">criada em ${new Date(c.criado).toLocaleDateString('pt-BR')}</span></div>
+  <div class="text-xs grid grid-cols-2 gap-1 mt-2" style="color:#334155"><div>🕐 Último acesso: ${fD(c.ultimo_acesso)}</div><div>🔁 Entradas: ${c.acessos}</div><div>📁 Projetos: ${c.projetos}</div><div>💾 Espaço: ${fB(c.bytes)}</div></div>
+  <div class="flex gap-2 mt-2 items-center"><button class="btn ghost" data-pj="${c.id}">📁 Ver projetos</button>${eu?'<span class="text-sm ml-auto">👑 Dono</span>':`<select class="in ml-auto" style="width:auto;padding:6px 9px" data-nv="${c.id}" data-old="${c.nivel}">${op}</select>`}</div>${eu?'':`<div class="flex gap-2 mt-2"><button class="btn ghost" data-sn="${c.id}">🔑 Nova senha</button><button class="btn danger ml-auto" data-ex="${c.id}">🚫 Excluir conta</button></div>`}<div data-pl="${c.id}"></div></div>`}).join(''):'<p class="text-sm" style="color:#64748b">Nenhuma conta encontrada.</p>'}
+$('bCt').onclick=()=>{$('mCt').classList.remove('hidden');ctLoad()};$('ctx').onclick=()=>$('mCt').classList.add('hidden');$('ctu').onclick=()=>ctLoad();$('ctq').oninput=ctList;
+async function ctProj(id){const box=$('ctl').querySelector(`[data-pl="${id}"]`);if(!box)return;const c=ctAll.find(x=>x.id==id),who=c?c.email:'';box.dataset.on=1;box.textContent='Carregando...';
+ try{const d=await rpcJ('admin_projetos',{p_uid:id});box.innerHTML=d.length?d.map(p=>`<div class="text-xs mt-2" style="padding:8px;border:1px solid #dbe3ec;border-radius:9px;background:#f8fafc"><b>${esc(p.nome||'Sem título')}</b><div style="color:#334155">${p.simbolos} símbolos &bull; ${p.comodos} cômodos &bull; ${fB(p.bytes)} &bull; ${fD(p.atualizado)}</div><div class="flex gap-2 mt-2"><button class="btn ghost" data-vp="${p.id}" data-who="${esc(who)}">👁 Abrir</button><button class="btn danger" data-dp="${p.id}" data-nm="${esc(p.nome||'Sem título')}" data-u="${id}">🗑 Apagar</button></div></div>`).join(''):'<div class="text-xs mt-2" style="color:#64748b">Nenhum projeto nesta conta.</div>'}
+ catch(x){box.textContent='Não foi possível carregar os projetos.'}}
+/* Abre o projeto de outra conta só para ver (nada é salvo) */
+async function ctVer(pid,who){try{const d=await rpcJ('admin_projeto',{p_id:pid});if(!d)throw 0;$('mCt').classList.add('hidden');ro=1;roWho=who;abrirProj({id:d.id,nome:d.nome,dados:d.dados})}catch(e){await msg('Não foi possível abrir este projeto. Rode o supabase_controle.sql atualizado no Supabase.')}}
+async function ctApagaP(pid,nome,uid){if(!await yes(`🗑 Apagar o projeto "${nome}"?\n\nEsta ação não pode ser desfeita.`))return;
+ try{await rpcJ('admin_apagar_projeto',{p_id:pid});ctLoad(uid)}catch(e){await msg('Não foi possível apagar o projeto.')}}
+const gSenha=()=>{const a='abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789',u=new Uint32Array(10);crypto.getRandomValues(u);let r='';for(const n of u)r+=a[n%a.length];return r};
+/* Senhas não ficam guardadas de forma legível (nem o Supabase vê). O que dá para fazer é definir uma nova. */
+async function ctSenha(id){const c=ctAll.find(x=>x.id==id);if(!c)return;
+ if(!await yes(`🔑 Alterar a senha de ${c.email}?\n\n(Confirmação 1 de 3)`))return;
+ const n=await ask(`Nova senha para ${c.email}\n\nUse a sugestão ou digite outra (mínimo 8 caracteres):`,{inp:1,def:gSenha()});if(n===null)return;
+ if(n.length<8){await msg('A senha precisa ter pelo menos 8 caracteres. Nada foi alterado.');return}
+ if(!await yes(`Tem certeza mesmo?\n\nA pessoa será desconectada de todos os aparelhos e só entrará com a nova senha.\n\n(Confirmação 2 de 3)`))return;
+ const t=await ask(`⚠️ ÚLTIMA CONFIRMAÇÃO (3 de 3)\n\nPara alterar a senha, digite o e-mail da conta:\n${c.email}`,{inp:1});if(t===null)return;
+ if(t.trim().toLowerCase()!=String(c.email||'').toLowerCase()){await msg('O e-mail não confere. Nada foi alterado.');return}
+ try{await rpcJ('admin_definir_senha',{p_uid:id,p_senha:n});await msg(`Senha alterada ✅\n\nConta: ${c.email}\nNova senha: ${n}\n\nPasse para a pessoa. Ela pode trocar depois em "Esqueci minha senha".`)}catch(e){await msg('Não foi possível trocar a senha. Rode o supabase_controle.sql atualizado no Supabase.')}}
+/* Excluir conta: 3 confirmações; a última pede para digitar o e-mail */
+async function ctExcluir(id){const c=ctAll.find(x=>x.id==id);if(!c)return;
+ if(!await yes(`🚫 Excluir a conta ${c.email}?\n\nIsso apaga a conta e ${c.projetos} projeto(s) dela.\n\n(Confirmação 1 de 3)`))return;
+ if(!await yes(`Tem certeza mesmo?\n\nA pessoa perde o acesso na hora e os projetos não podem ser recuperados.\n\n(Confirmação 2 de 3)`))return;
+ const t=await ask(`⚠️ ÚLTIMA CONFIRMAÇÃO (3 de 3)\n\nDepois disto não tem volta. Para excluir, digite o e-mail da conta:\n${c.email}`,{inp:1});if(t===null)return;
+ if(t.trim().toLowerCase()!=String(c.email||'').toLowerCase()){await msg('O e-mail não confere. Nada foi excluído.');return}
+ try{await rpcJ('admin_excluir_conta',{p_uid:id});await msg('Conta excluída. ✅');ctLoad()}catch(e){await msg('Não foi possível excluir a conta. Rode o supabase_controle.sql atualizado no Supabase.')}}
+$('ctl').addEventListener('click',async e=>{const d=e.target.dataset;
+ if(d.vp)return ctVer(d.vp,d.who);if(d.dp)return ctApagaP(d.dp,d.nm,d.u);if(d.sn)return ctSenha(d.sn);if(d.ex)return ctExcluir(d.ex);if(!d.pj)return;
+ const box=$('ctl').querySelector(`[data-pl="${d.pj}"]`);if(box.dataset.on){box.innerHTML='';delete box.dataset.on;return}ctProj(d.pj)});
+$('ctl').addEventListener('change',async e=>{const id=e.target.dataset.nv;if(!id)return;const n=e.target.value,old=e.target.dataset.old,c=ctAll.find(x=>x.id==id);
+ if(!await yes(`Mudar o nível de ${c?c.email:'esta conta'} para ${NIVEIS[n]}?`)){e.target.value=old;return}
+ try{await rpcJ('admin_definir_nivel',{p_uid:id,p_nivel:n});if(c)c.nivel=n;e.target.dataset.old=n;ctRes.admins=ctAll.filter(x=>x.nivel=='admin').length;ctDraw()}catch(x){e.target.value=old;await msg('Não foi possível mudar o nível. Confira se o supabase_controle.sql foi executado.')}});
+$('bLoc').onclick=()=>{ses={access_token:'local',user:{email:'Sem conta'}};localStorage.setItem('dce_ses',JSON.stringify(ses));list()};{const loc=$('bLoc').onclick;$('bLoc').onclick=$('bLoc2').onclick=async()=>{if(await yes('⚠️ Sem conta, seus projetos NÃO são salvos na nuvem. Eles ficam só neste aparelho e podem ser perdidos se você limpar os dados do navegador ou trocar de aparelho.\n\nContinuar sem conta?'))loc()}}
+/* ===== v5.2.1: Suporte (pessoas com ou sem conta <-> equipe). Só mensagens, sem aberta/fechada. Atualiza sozinho a cada 6 s com a janela aberta ===== */
+const SPLOC=()=>!ses||ses.access_token=='local';
+let spAT=0,spV='lista',spId=null,spSig='',saAll=[],saQ='',saC=null,saSig='',spBz=0;
+const spErr=e=>{const m=String(e&&e.message||'');return /limite_hora/.test(m)?'Você enviou muitas mensagens em pouco tempo. Tente de novo daqui a pouco.':/limite_abertas/.test(m)?'Você já abriu 5 conversas hoje. Continue em uma delas ou tente de novo amanhã.':/assunto_invalido|texto_invalido/.test(m)?'Confira o assunto (mínimo 3 letras) e a mensagem (mínimo 5 letras).':'Não foi possível enviar agora. Tente de novo mais tarde.'};
+const spBadge=n=>['bSp','bSp2'].forEach(i=>$(i).classList.toggle('has',n>0));
+async function spChk(){if(!CFG.url||!ses)return;try{spBadge((+(await rpcJ('suporte_novas',{p_device:DID})))||0)}catch(e){}}
+async function spAdmChk(){if(!CFG.url||!ses||ses.access_token=='local')return;try{{const h=((+(await rpcJ('suporte_admin_pendentes')))||0)>0;$('bSpA').classList.toggle('has',h);$('bAdmM').classList.toggle('has',h)}}catch(e){}}
+/* Quem criou conta depois: leva as conversas do aparelho para a conta (uma vez por entrada) */
+async function spVinc(){if(!CFG.url||!ses||ses.access_token=='local')return;let f=null;try{f=sessionStorage.getItem('dce_spv')}catch(e){}if(f==='1')return;
+ try{await rpcJ('suporte_vincular',{p_device:DID});try{sessionStorage.setItem('dce_spv','1')}catch(e){}}catch(e){}}
+function spAvP(v){const e=$('spAv');e.style.display=SPLOC()&&v!='conv'?'':'none';e.textContent='⚠️ Sem conta, você só vê as respostas neste aparelho; se limpar os dados do navegador, perde o acesso. Crie uma conta para não perder.'}
+const spSh=(t,back)=>{$('spT').textContent=t;$('spBk').style.display=back?'':'none'};
+/* q = atualização silenciosa (sem piscar "Carregando" e sem apagar o que a pessoa está digitando) */
+async function spLista(q){if(!q){spV='lista';spId=null;spSig='';spSh('🆘 Suporte',0);spAvP('lista');$('spBody').textContent='Carregando...'}let l;
+ try{l=await rpcJ('suporte_minhas',{p_device:DID})||[]}catch(e){if(!q)$('spBody').innerHTML='<p class="text-sm" style="color:#b42318">Não foi possível carregar o suporte agora. Tente de novo mais tarde.</p>';return}
+ spBadge(l.filter(c=>c.nao_lida).length);
+ const sg=JSON.stringify(l.map(c=>[c.id,c.atualizado,c.nao_lida]));if(q&&(sg==spSig||spV!='lista'))return;spSig=sg;
+ $('spBody').innerHTML='<button id="spNew" class="btn or w-full py-3">＋ Nova mensagem</button><div class="mt-2">'+(l.length?l.map(c=>`<button class="qcc w-full text-left" style="display:block;background:#fff" data-sc="${c.id}"><div class="flex items-center gap-2">${c.nao_lida?'<span title="Resposta nova" style="width:10px;height:10px;border-radius:99px;background:#e11d48;flex:none"></span>':''}<b style="word-break:break-word">${esc(c.assunto)}</b><span class="text-xs ml-auto" style="color:#64748b;white-space:nowrap">${fD(c.atualizado)}</span></div>${c.nao_lida?'<div class="text-xs mt-1" style="color:#e11d48;font-weight:700">Resposta nova</div>':''}<div class="text-xs mt-1" style="color:#64748b">${esc(c.ultima||'')}</div></button>`).join(''):'<p class="text-sm" style="color:#64748b;margin-top:12px">Você ainda não tem conversas. Toque em <b>Nova mensagem</b> para falar com a equipe. 💙</p>')+'</div>';
+ $('spNew').onclick=()=>spNova()}
+function spNova(){spV='nova';spId=null;spSh('✉️ Nova mensagem',1);spAvP('nova');const loc=SPLOC();
+ $('spBody').innerHTML=`<label>Assunto<input id="spa" class="in mt-1" maxlength="100" placeholder="Ex.: dúvida sobre o quadro de cargas"></label><label>Mensagem (5 a 2000 caracteres)<textarea id="spm" class="in mt-1" rows="6" maxlength="2000" placeholder="Conte o que você precisa..."></textarea></label>${loc?'<label>E-mail para contato (opcional)<input id="spc" type="email" class="in mt-1" maxlength="120" placeholder="seu@email.com"></label><p class="text-xs mt-1" style="color:#64748b">Só fica guardado para a equipe poder falar com você por fora. O site não envia e-mail.</p>':''}<p id="spe" class="text-sm min-h-[20px]" style="color:#b42318"></p><div class="flex gap-2 mt-3"><button id="spCa" class="btn ghost flex-1 py-2.5">Cancelar</button><button id="spEn" class="btn or flex-1 py-2.5">Enviar</button></div>`;
+ $('spCa').onclick=()=>spLista();$('spEn').onclick=spEnviar}
+async function spEnviar(){const a=$('spa').value.trim(),m=$('spm').value.trim(),c=$('spc')?$('spc').value.trim():'',er=$('spe');
+ if(a.length<3){er.textContent='Escreva um assunto (mínimo 3 letras).';return}if(m.length<5){er.textContent='Escreva um pouco mais na mensagem. 🙂';return}
+ if(c&&!/^\S+@\S+\.\S+$/.test(c)){er.textContent='Confira o e-mail de contato (ou deixe em branco).';return}
+ $('spEn').disabled=true;er.textContent='';
+ try{const id=await rpcJ('suporte_nova',{p_device:DID,p_assunto:a,p_texto:m,p_contato:c||null,p_versao:VER,p_aparelho:COARSE?'celular':'computador',p_navegador:dev()});await spAbre(id)}
+ catch(e){er.textContent=spErr(e);$('spEn').disabled=false}}
+const spBub=(m,eq,lb)=>`<div style="display:flex;justify-content:${eq?'flex-start':'flex-end'};margin-top:8px"><div style="max-width:88%;padding:9px 12px;border-radius:14px;background:${eq?'#eaf2fb':'#fde9dc'};border:1px solid ${eq?'#c9dcf0':'#f6cdb2'}"><div class="text-xs" style="font-weight:700;color:${eq?'#1b4f7a':'#d95a14'}">${lb}</div><div class="text-sm" style="white-space:pre-wrap;word-break:break-word">${esc(m.texto)}</div><div class="text-xs" style="color:#64748b;margin-top:3px">${fD(m.criado)}</div></div></div>`;
+async function spAbre(id,q){if(!q){spV='conv';spId=id;spSig='';spSh('🆘 Conversa',1);spAvP('conv');$('spBody').textContent='Carregando...'}let d;
+ try{d=await rpcJ('suporte_conversa',{p_device:DID,p_id:id});if(!d)throw 0}catch(e){if(!q)$('spBody').innerHTML='<p class="text-sm" style="color:#b42318">Não foi possível abrir esta conversa.</p>';return}
+ const ms=d.mensagens||[],sg=ms.length+'|'+(ms.length?ms[ms.length-1].id:'');if(q&&(sg==spSig||spV!='conv'||spId!=id))return;spSig=sg;
+ const keep=$('spr')?$('spr').value:'',had=!!(document.activeElement&&document.activeElement.id=='spr');
+ $('spBody').innerHTML=`<div class="text-sm"><b style="word-break:break-word">${esc(d.assunto)}</b></div>${ms.map(m=>spBub(m,m.autor=='equipe',m.autor=='equipe'?'Equipe DCeletrica':'Você')).join('')}<label class="mt-3">Responder<textarea id="spr" class="in mt-1" rows="3" maxlength="2000" placeholder="Escreva sua resposta..."></textarea></label><p id="spe" class="text-sm min-h-[20px]" style="color:#b42318"></p><button id="spRe" class="btn or w-full py-3 mt-1">Enviar resposta</button>`;
+ $('spr').value=keep;if(had)$('spr').focus();
+ $('spRe').onclick=async()=>{const t=$('spr').value.trim();if(t.length<2){$('spe').textContent='Escreva sua resposta. 🙂';return}$('spRe').disabled=true;
+  try{await rpcJ('suporte_responder_usuario',{p_device:DID,p_id:id,p_texto:t});await spAbre(id)}catch(e){$('spe').textContent=spErr(e);$('spRe').disabled=false}};
+ spChk()}
+/* Toque numa conversa da lista abre ela */
+$('spBody').addEventListener('click',e=>{const b=e.target.closest('[data-sc]');if(b)spAbre(b.dataset.sc)});
+$('bSp').onclick=$('bSp2').onclick=()=>{$('mSp').classList.remove('hidden');spLista()};
+$('spx').onclick=()=>{$('mSp').classList.add('hidden');spChk()};$('spBk').onclick=()=>spLista();
+/* Equipe (admin e dono): caixa de entrada só de mensagens */
+const saWho=c=>c.email_conta?esc(c.email_conta):'Sem conta (aparelho)',SI=(k,v)=>v?`<div><span style="color:#64748b">${k}:</span> ${esc(v)}</div>`:'';
+async function saLista(){saC=null;saSig='';$('saT').textContent='📨 Suporte';$('saBk').style.display='none';
+ $('saBody').innerHTML=`<p id="san" class="text-sm" style="color:#334155"></p><div class="flex gap-2 mt-2"><input id="saq" class="in" placeholder="Buscar por assunto, e-mail ou texto..." value="${esc(saQ)}"><button id="sau" class="btn ghost" title="Atualizar">⟳</button></div><div id="sal" class="mt-2">Carregando...</div>`;
+ $('saq').oninput=()=>{saQ=$('saq').value;saDraw()};$('sau').onclick=()=>saLoad();await saLoad()}
+async function saLoad(q){let l;try{l=await rpcJ('suporte_admin_lista')||[]}catch(e){if(!q&&$('sal'))$('sal').textContent='Não foi possível carregar. Rode o supabase_controle.sql atualizado no Supabase.';return}
+ if(saC)return;const sg=JSON.stringify(l.map(c=>[c.id,c.atualizado,c.nao_lida]));if(q&&sg==saSig)return;saSig=sg;saAll=l;saDraw();spAdmChk()}
+function saDraw(){if(!$('sal')||!$('san'))return;const q=saQ.trim().toLowerCase();
+ $('san').innerHTML=`🔴 <b>${saAll.filter(c=>c.nao_lida).length}</b> não lida(s) • ${saAll.length} conversa(s)`;
+ const l=saAll.filter(c=>!q||[c.assunto,c.email_conta,c.contato,c.ultima].some(x=>String(x||'').toLowerCase().includes(q)));
+ $('sal').innerHTML=l.length?l.map(c=>`<button class="qcc w-full text-left" style="display:block;background:#fff" data-sc="${c.id}"><div class="flex items-center gap-2">${c.nao_lida?'<span title="Não lida" style="width:10px;height:10px;border-radius:99px;background:#e11d48;flex:none"></span>':''}<b style="word-break:break-word">${esc(c.assunto)}</b><span class="text-xs ml-auto" style="color:#64748b;white-space:nowrap">${fD(c.atualizado)}</span></div><div class="text-xs mt-1" style="color:#334155;word-break:break-all">👤 ${saWho(c)}${c.contato?' • ✉️ '+esc(c.contato):''}</div><div class="text-xs mt-1" style="color:#334155">${c.total} mensagem(ns)</div><div class="text-xs mt-1" style="color:#64748b">${esc(c.ultima||'')}</div></button>`).join(''):'<p class="text-sm" style="color:#64748b;margin-top:12px">Nenhuma conversa por aqui. 🎉</p>'}
+async function saAbre(id,q){if(!q){saC=id;saSig='';$('saT').textContent='📨 Conversa';$('saBk').style.display='';$('saBody').textContent='Carregando...'}let d;
+ try{d=await rpcJ('suporte_admin_conversa',{p_id:id});if(!d)throw 0}catch(e){if(!q)$('saBody').innerHTML='<p class="text-sm" style="color:#b42318">Não foi possível abrir esta conversa.</p>';return}
+ const ms=d.mensagens||[],sg=ms.length+'|'+(ms.length?ms[ms.length-1].id:'');if(q&&(sg==saSig||saC!=id))return;saSig=sg;spAdmChk();
+ const keep=$('sar')?$('sar').value:'',had=!!(document.activeElement&&document.activeElement.id=='sar');
+ $('saBody').innerHTML=`<div class="text-sm"><b style="word-break:break-word">${esc(d.assunto)}</b></div>
+ <div class="text-xs grid grid-cols-2 gap-1 mt-2" style="color:#334155;word-break:break-all"><div><span style="color:#64748b">👤 Quem:</span> ${saWho(d)}</div>${SI('✉️ Contato',d.contato)}${SI('🏷️ Versão',d.versao)}${SI('📱 Aparelho',d.aparelho)}${SI('🌐 Navegador',d.navegador)}<div><span style="color:#64748b">🕐 Aberta:</span> ${fD(d.criado)}</div></div>
+ ${ms.map(m=>spBub(m,m.autor!='equipe',m.autor=='equipe'?'Equipe'+(m.por?' • '+esc(m.por):''):'Pessoa')).join('')}
+ <label class="mt-3">Responder<textarea id="sar" class="in mt-1" rows="4" maxlength="2000" placeholder="Escreva a resposta (a pessoa verá como Equipe DCeletrica)..."></textarea></label><p id="sae" class="text-sm min-h-[20px]" style="color:#b42318"></p>
+ <button class="btn or w-full py-3 mt-1" data-sa="resp">📨 Enviar resposta</button><button class="btn danger w-full py-3 mt-2" data-sa="del">🗑 Apagar conversa</button>`;
+ $('sar').value=keep;if(had)$('sar').focus()}
+$('saBody').addEventListener('click',async e=>{const b=e.target.closest('[data-sc],[data-sa]');if(!b)return;const a=b.dataset;
+ if(a.sc)return saAbre(a.sc);if(!saC)return;
+ if(a.sa=='resp'){const t=$('sar').value.trim();if(!t){$('sae').textContent='Escreva a resposta.';return}b.disabled=true;
+  try{await rpcJ('suporte_admin_responder',{p_id:saC,p_texto:t});$('sar').value='';await saAbre(saC)}catch(x){$('sae').textContent='Não foi possível enviar a resposta.';b.disabled=false}}
+ else if(a.sa=='del'){if(!await yes('🗑 Apagar esta conversa inteira?\n\nA pessoa perde o histórico e isso não pode ser desfeito.'))return;
+  try{await rpcJ('suporte_admin_apagar',{p_id:saC});await saLista();spAdmChk()}catch(x){await msg('Não foi possível apagar a conversa.')}}});
+$('bSpA').onclick=()=>{$('mSpA').classList.remove('hidden');saLista()};$('sax').onclick=()=>{$('mSpA').classList.add('hidden');spAdmChk()};$('saBk').onclick=()=>saLista();
+/* Atualização automática: a cada 6 s com a janela aberta; a cada 45 s só para a bolinha dos botões */
+async function spTick(){if(spBz)return;spBz=1;
+ try{if(!$('mSp').classList.contains('hidden')){if(spV=='lista')await spLista(1);else if(spV=='conv'&&spId)await spAbre(spId,1)}
+  if(!$('mSpA').classList.contains('hidden')){if(saC)await saAbre(saC,1);else if($('sal'))await saLoad(1)}}catch(e){}spBz=0}
+setInterval(spTick,6000);
+setInterval(()=>{if(document.hidden||!ses||!CFG.url||!$('vL').classList.contains('hidden'))return;spChk();if($('bSpA').style.display!='none')spAdmChk()},45000);
+(async()=>{try{const r=sessionStorage.getItem('dce_redir');if(r){sessionStorage.removeItem('dce_redir');if(location.pathname=='/')history.replaceState(null,'',r)}}catch(e){}
+ const h=new URLSearchParams(location.hash.slice(1));
+ if(h.get('error_description')){history.replaceState(null,'','/login');setTimeout(()=>{$('le').textContent='Não foi possível entrar com o Google: '+h.get('error_description').replace(/\+/g,' ')},0)}
+ if(CFG.url&&h.get('access_token')){ses={access_token:h.get('access_token'),refresh_token:h.get('refresh_token'),user:{}};localStorage.setItem('dce_ses',JSON.stringify(ses));history.replaceState(null,'','/');
+  if(h.get('type')=='recovery'){const n=prompt('Digite sua nova senha (mínimo 8 caracteres):');if(n&&n.length>=8){const r=await fetch(CFG.url+'/auth/v1/user',{method:'PUT',headers:{apikey:CFG.key,Authorization:'Bearer '+ses.access_token,'Content-Type':'application/json'},body:JSON.stringify({password:n})});alert(r.ok?'Senha alterada!':'Não foi possível alterar. Peça um novo link.')}}}
+ if(h.get('error_description')){rt=1;show('vL');rt=0}else if(location.pathname=='/'||location.pathname==''||location.pathname=='/index.html'){rt=1;ses?await list():show('vH');rt=0}else await rota()})();

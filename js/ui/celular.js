@@ -1,0 +1,17 @@
+/* DC CAD Pro v9.0 alfa — celular.js: fecha menus ao tocar fora (junto do ajuste de celular)
+   (bloco movido do index.html sem nenhuma alteração de lógica) */
+document.addEventListener('pointerdown',e=>{if(!e.target.closest('.grp'))document.querySelectorAll('.grp.open').forEach(g=>g.classList.remove('open'))},true)
+(()=>{const R=document.documentElement,mq=matchMedia('(max-width:820px)'),co=matchMedia('(pointer:coarse)'),G=id=>document.getElementById(id);let was=null;
+function fit(){const w=innerWidth,h=innerHeight,m=mq.matches||(co.matches&&Math.min(w,h)<600);R.classList.toggle('mob',m);R.classList.toggle('land',m&&w>h);R.style.setProperty('--vh',h/100+'px');const c=was!==null&&was!==m;was=m;if(c)dispatchEvent(new Event('resize'))}
+addEventListener('resize',fit);addEventListener('orientationchange',()=>setTimeout(fit,250));fit();
+document.querySelectorAll('#tb .grp').forEach(g=>{const b=g.querySelector('.tb'),m=b.textContent.replace(/\s*▾\s*$/,'').trim().match(/^(\S+)\s+(.+)$/);if(m){b.innerHTML='<span class="ti">'+m[1]+'</span><span class="tl"> '+m[2]+' &#9662;</span>';b.setAttribute('aria-label',m[2]);g.querySelector('.dd').dataset.t=m[1]+' '+m[2]}});
+const ADM=['bAdm','bSpA','bCt'],vis=id=>{const b=G(id);return b&&b.style.display!='none'&&(!ADM.includes(id)||G('admW').style.display!='none')};
+function sheet(t,items){const o0=G('mSh');if(o0)o0.remove();const o=document.createElement('div');o.id='mSh';o.innerHTML='<div><div class="gp"></div><h4></h4><div class="g"></div></div>';o.querySelector('h4').textContent=t;const g=o.querySelector('.g');
+ items.forEach(([id,ic,lb,c,fn])=>{if(fn?!vis('admW'):!vis(id))return;const b=document.createElement('button');b.className='t '+(c||'')+(G(fn&&id=='admW'?'bSpA':id).classList.contains('has')?' has':'');b.innerHTML='<i>'+ic+'</i><span>'+lb+'</span>';b.onclick=()=>{o.remove();setTimeout(fn||(()=>G(id).click()),60)};g.appendChild(b)});
+ o.onclick=e=>{if(e.target===o)o.remove()};document.body.appendChild(o)}
+const mk=(par,id,ic,fn)=>{const b=document.createElement('button');b.id=id;b.className='btn ghost mobonly sp';b.setAttribute('aria-label','Menu');b.textContent=ic;b.onclick=fn;par.appendChild(b);return b};
+const menuP=()=>sheet(G('us').textContent||'Menu',[['bOrc80','🧾','Orçamentos','or'],['bNv','📋','Novidades'],['bPf77','🪪','Meu cartão'],['bUtP','🧮','Utilitários'],['bFb','💬','Feedback'],['bSp','🆘','Suporte'],['bCfg','⚙️','Configurações'],['bCa','☁️','Criar conta','or'],['admW','🛡️','Admin','or',()=>sheet('🛡️ Painel do administrador',[['bAdm','📬','Feedbacks'],['bSpA','📨','Caixa de suporte'],['bCt','👥','Contas'],['admW','‹','Voltar','',menuP]])],['bOut','⎋','Sair']]);
+const bp=mk(document.querySelector('#vP .top'),'bMenuP','☰',menuP);
+const be=mk(document.querySelector('#vE .eh'),'bMoreE','⋯',()=>sheet(G('nm').value||'Projeto',[['bSh','📄','Gerar PDF','or'],['bSv','💾','Salvar'],['bQd','⚙','Quadro'],['bCh','💬','ChatDC NBR'],['bDc','📑','Documentos'],['b72','📐','Desenho 7.2','or'],['bUt','🧰','Utilitários'],['bCalc','🧮','Calculadora'],['bDu','⧉','Duplicar'],['bRo','⟳','Girar'],['bFt','⛶','Enquadrar'],['bZp','＋','Zoom +'],['bZm','−','Zoom −'],['bVw','👁','Exibir'],['bDl','⬇','Baixar'],['bUl','⬆','Abrir arquivo'],['bFb2','💬','Feedback'],['bSp2','🆘','Suporte']]));
+new MutationObserver(()=>{[bp,be].forEach(b=>b.classList.toggle('has',G('bSp').classList.contains('has')))}).observe(G('bSp'),{attributes:true,attributeFilter:['class']});
+})();
