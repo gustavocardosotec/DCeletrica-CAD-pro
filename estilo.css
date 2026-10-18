@@ -109,3 +109,7 @@ button,.btn,.tb,.it{touch-action:manipulation;-webkit-user-select:none;user-sele
 .ia-ls{margin:6px 0 6px 16px;list-style:disc;line-height:1.7}
 .dts{display:inline-flex;gap:4px;padding:4px 2px}.dts i{width:7px;height:7px;border-radius:50%;background:#94a3b8;animation:dts 1s infinite}.dts i:nth-child(2){animation-delay:.15s}.dts i:nth-child(3){animation-delay:.3s}@keyframes dts{0%,60%,100%{opacity:.3;transform:none}30%{opacity:1;transform:translateY(-3px)}}
 #ch73 .i73 .in{border-radius:99px}#ch73 .i73 .btn{border-radius:99px;min-width:44px}
+/* utilitários: força a grade (o estilo antigo do index.html tinha prioridade) */
+html .tb72{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;overflow:visible!important;margin:10px 0}
+html .tb72 button{flex:none;width:100%;min-height:58px;display:flex;align-items:center;justify-content:center;text-align:center;white-space:normal;line-height:1.2;border-radius:14px;border:2px solid transparent;padding:8px 10px}
+html .tb72 button.on{border-color:var(--or2)}
