@@ -1,5 +1,5 @@
 /* DC CAD Pro - Service Worker (suba a versão em V a cada deploy) */
-const V='dccad-v8.2.0',
+const V='dccad-v8.2.1',
 SHELL=['/','/index.html','/estilo.css','/config.js','/pix.js','/perfis.js','/ia.js','/orcamentos.js','/campo.js','/nav.js','/documentos.js','/manifest.json','/logo.png','/favicon.png','/apple-touch-icon.png','/Whatsapp.png','/Logos%20Bancos/Banco%20do%20Brasil.png','/Logos%20Bancos/Bradesco.png','/Logos%20Bancos/C6.png','/Logos%20Bancos/Caixa.png','/Logos%20Bancos/Inter.png','/Logos%20Bancos/Ita%C3%BA.png','/Logos%20Bancos/Mercado%20Pago.png','/Logos%20Bancos/Neon.png','/Logos%20Bancos/Nubank.png','/Logos%20Bancos/Original.png','/Logos%20Bancos/PagBank.png','/Logos%20Bancos/PicPay.png','/Logos%20Bancos/Santander.png','/Logos%20Bancos/Sicoob.png','/Logos%20Bancos/Sicredi.png'],
 CDN=['https://cdn.tailwindcss.com','https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js','https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js'];
 self.addEventListener('install',e=>{e.waitUntil((async()=>{const c=await caches.open(V);
