@@ -8,6 +8,7 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
+  "file_handlers": [{"action": "/", "accept": {"application/json": [".dccad"]}}],
   "background_color": "#0f2a43",
   "theme_color": "#0f2a43",
   "icons": [

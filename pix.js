@@ -1,4 +1,4 @@
-/* DC CAD Pro 7.6 alfa — Pix e WhatsApp: cartão em canvas com a cor e a logo do banco, QR, chave e titular (offline) */
+/* DC CAD Pro — Pix e WhatsApp: cartão em canvas com a cor e a logo do banco, QR, chave e titular (offline) */
 (()=>{'use strict';
 const K='dce_pay75',$=id=>document.getElementById(id),E=s=>String(s==null?'':s).replace(/[&<>\"']/g,c=>'&#'+c.charCodeAt(0)+';'),
 uid=()=>Math.random().toString(36).slice(2,9),
@@ -46,18 +46,40 @@ const badge=(id,s=44)=>{const b=id=='wa'?WAB:bk(id),l=LG[id];
 const WA=(s=44)=>LG.wa?badge('wa',s):`<svg width="${s}" height="${s}" viewBox="0 0 48 48" aria-label="WhatsApp" style="flex:none"><rect width="48" height="48" rx="13" fill="#25D366"/><path d="M24 9.5a14.4 14.4 0 0 0-12.3 21.8L9.8 38l7-1.8A14.4 14.4 0 1 0 24 9.5z" fill="none" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/><path transform="translate(9.3 9.3) scale(1.2)" d="M17.5 14.4c-.3-.1-1.7-.8-2-.9-.3-.1-.5-.1-.7.1-.2.3-.8.9-.9 1.1-.2.2-.3.2-.6.1-1.7-.8-2.8-1.5-3.9-3.4-.3-.5.3-.5.8-1.5.1-.2 0-.4 0-.5l-.9-2.1c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.2.2 2.1 3.2 5.1 4.5 1.9.8 2.6.9 3.6.7.6-.1 1.7-.7 2-1.4.2-.7.2-1.3.2-1.4-.1-.1-.3-.2-.6-.3z" fill="#fff"/></svg>`;
 
 /* ---------- dados (local + conta) ---------- */
-const load=()=>{let d=null;try{d=JSON.parse(localStorage.getItem(K))}catch(e){}if(!d||!Array.isArray(d.pix)||!Array.isArray(d.wa)){d={pix:[],wa:[],t:0};
-  try{const m=ses&&ses.user&&ses.user.user_metadata&&ses.user.user_metadata.pagamentos;if(m&&Array.isArray(m.pix)){d=m}}catch(e){}}return d};
+const logged=()=>typeof ses!='undefined'&&ses&&ses.access_token&&ses.access_token!='local'&&navigator.onLine,
+meId=()=>{try{return JSON.parse(atob(ses.access_token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).sub}catch(e){return null}},
+okD=d=>d&&Array.isArray(d.pix)&&Array.isArray(d.wa);
+const load=()=>{let d=null;try{d=JSON.parse(localStorage.getItem(K))}catch(e){}return okD(d)?d:{pix:[],wa:[],t:0}};
 let D=load();
-async function save(){D.t=Date.now();try{localStorage.setItem(K,JSON.stringify(D))}catch(e){tst('Sem espaço para salvar');return}
- try{if(navigator.onLine&&ses&&ses.access_token&&ses.access_token!='local'){const r=await fetch(CFG.url+'/auth/v1/user',{method:'PUT',headers:UH(),body:JSON.stringify({data:{pagamentos:D}})});if(r.ok){ses.user=await r.json();localStorage.setItem('dce_ses',JSON.stringify(ses))}}}catch(e){}}
-setInterval(()=>{try{if(!D.pix.length&&!D.wa.length){const d=load();if(d.pix.length||d.wa.length){D=d;try{localStorage.setItem(K,JSON.stringify(D))}catch(e){}}}}catch(e){}},4000);
+const keep=()=>{try{localStorage.setItem(K,JSON.stringify(D));return true}catch(e){return false}};
+async function rq(p,o={}){const go=()=>fetch(CFG.url+p,{...o,headers:{...UH(),...(o.headers||{})}});let r=await go();
+ if(r.status==401&&ses.refresh_token){try{const d=await api('/auth/v1/token?grant_type=refresh_token',{refresh_token:ses.refresh_token});if(d&&d.access_token){ses=d;localStorage.setItem('dce_ses',JSON.stringify(d));r=await go()}}catch(e){}}return r}
+/* grava na CONTA (tabela pagamentos; se ela não existir, usa os dados da conta) */
+async function push(){if(!logged())return false;try{const id=meId();
+ let r=await rq('/rest/v1/pagamentos?on_conflict=user_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({user_id:id,dados:D,atualizado:new Date().toISOString()})});if(r.ok)return true;
+ r=await rq('/auth/v1/user',{method:'PUT',body:JSON.stringify({data:{pagamentos:D}})});if(r.ok){ses.user=await r.json();localStorage.setItem('dce_ses',JSON.stringify(ses));return true}}catch(e){}return false}
+/* busca na conta; o mais recente ganha. Devolve true se mudou algo */
+let pulling=null;
+function pull(){if(pulling)return pulling;return pulling=(async()=>{try{if(!logged())return false;const id=meId();
+ if(D.uid&&id&&D.uid!==id){D={pix:[],wa:[],t:0};keep()} /* outra conta neste aparelho */
+ let rem=null,viaTbl=false;
+ const r=await rq('/rest/v1/pagamentos?select=dados&limit=1');
+ if(r.ok){viaTbl=true;const a=await r.json();rem=a[0]&&a[0].dados}
+ if(!okD(rem)){try{const u=await rq('/auth/v1/user');if(u.ok){const j=await u.json();ses.user=j;localStorage.setItem('dce_ses',JSON.stringify(ses));const m=j.user_metadata&&j.user_metadata.pagamentos;if(okD(m))rem=m}}catch(e){}}
+ if(okD(rem)&&(rem.t||0)>(D.t||0)){D={pix:rem.pix,wa:rem.wa,t:rem.t||Date.now(),uid:id};keep();return true}
+ if((D.pix.length||D.wa.length)&&((D.t||0)>((rem&&rem.t)||0)||(viaTbl&&!okD(rem)))){D.uid=id;keep();await push()}
+ return false}catch(e){return false}finally{pulling=null}})()}
+async function save(){D.t=Date.now();try{const id=meId();if(id&&logged())D.uid=id}catch(e){}if(!keep()){tst('Sem espaço para salvar');return}
+ if(typeof ses!='undefined'&&ses&&ses.access_token&&ses.access_token!='local'){const ok=await push();if(!ok)tst('Salvo neste aparelho; vai para a conta quando houver internet')}}
+addEventListener('online',()=>pull().then(c=>{if(c&&$('pay75'))paint()}));
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)pull().then(c=>{if(c&&$('pay75'))paint()})});
+setTimeout(()=>pull(),1200);
 
 /* ---------- Pix BR Code (estático) ---------- */
 const crc=s=>{let c=0xFFFF;for(let i=0;i<s.length;i++){c^=s.charCodeAt(i)<<8;for(let j=0;j<8;j++)c=c&0x8000?((c<<1)^0x1021)&0xFFFF:(c<<1)&0xFFFF}return c.toString(16).toUpperCase().padStart(4,'0')},
 tlv=(i,v)=>i+String(v.length).padStart(2,'0')+v,asc=(s,n)=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\x20-\x7E]/g,'').toUpperCase().trim().slice(0,n),
 fkey=p=>{const k=String(p.chave||'').trim();if(p.tipo=='tel'){const d=k.replace(/\D/g,'');return d.startsWith('55')&&d.length>11?'+'+d:'+55'+d}if(p.tipo=='cpf'||p.tipo=='cnpj')return k.replace(/\D/g,'');if(p.tipo=='mail')return k.toLowerCase();return k};
-function brcode(p,val){if(p.payload&&String(p.payload).trim().length>20)return String(p.payload).trim();if(!p.chave)return'';
+function brcode(p,val){if(p.payload&&String(p.payload).trim().length>20&&!(val>0&&p.chave))return String(p.payload).trim();if(!p.chave)return'';
  let m=tlv('00','01')+tlv('01','11')+tlv('26',tlv('00','br.gov.bcb.pix')+tlv('01',fkey(p)))+tlv('52','0000')+tlv('53','986')+(val>0?tlv('54',val.toFixed(2)):'')+tlv('58','BR')+tlv('59',asc(p.nome,25)||'RECEBEDOR')+tlv('60',asc(p.cidade,15)||'BRASIL')+tlv('62',tlv('05','***'))+'6304';return m+crc(m)}
 const waNum=n=>{n=String(n||'').replace(/\D/g,'');return n.length<=11?'55'+n:n},
 waFmt=n=>{const d=String(n||'').replace(/\D/g,'').replace(/^55(?=\d{10,11}$)/,'');return d.length==11?d.replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3'):d.length==10?d.replace(/(\d{2})(\d{4})(\d{4})/,'($1) $2-$3'):n},
@@ -122,7 +144,8 @@ async function paintCard(o){await logosReady();
  else{g.fillStyle='#94a3b8';g.font=FN(600,27);g.fillText(o.hint,W/2,1620)}
  g.globalAlpha=.8;g.fillStyle=o.fg;g.font=FN(700,28);g.fillText('DC CAD Pro',W/2,1728);g.globalAlpha=1;
  return c}
-const cardPix=(p,v)=>{const b=bk(p.banco);return paintCard({c1:b[2],c2:b[3],fg:b[4],logo:p.banco,label:p.rotulo||b[1],sub:b[1],qr:brcode(p,v),pill:p.chave?'Pix • '+(TP[p.tipo]||'Chave'):'Pix copia e cola',key:fmtKey(p),hl:'TITULAR',holder:p.nome,line:b[1],v,hint:'Confira o nome e o banco antes de pagar'})},
+let showOv=null;const shown=p=>showOv==null?p.mostrar!==false:showOv;
+const cardPix=(p,v)=>{const b=bk(p.banco);return paintCard({c1:b[2],c2:b[3],fg:b[4],logo:p.banco,label:p.rotulo||b[1],sub:b[1],qr:brcode(p,v),pill:shown(p)?(p.chave?'Pix • '+(TP[p.tipo]||'Chave'):'Pix copia e cola'):'Pix',key:shown(p)?fmtKey(p):'Escaneie o QR Code',hl:'TITULAR',holder:p.nome,line:b[1],v,hint:'Confira o nome e o banco antes de pagar'})},
 cardWa=w=>paintCard({c1:WAB[2],c2:WAB[3],fg:'#fff',logo:'wa',label:w.nome||'WhatsApp',sub:w.rotulo||'WhatsApp',qr:waLink(w),pill:'WhatsApp',key:waShow(w.numero),hl:'NOME',holder:w.nome,line:'WhatsApp',v:0,hint:'Escaneie para abrir a conversa'});
 
 /* ---------- estilo ---------- */
@@ -145,7 +168,7 @@ const st=document.createElement('style');st.textContent=`#pay75{position:fixed;i
 
 /* ---------- apresentação ---------- */
 let tab='pix',idx={pix:0,wa:0},val='',pt=0,ct=0,cur=null;
-function openPay(t){if(t)tab=t;if(!D.pix.length&&D.wa.length&&!t)tab='wa';let o=$('pay75');if(o)o.remove();o=document.createElement('div');o.id='pay75';document.body.appendChild(o);try{history.pushState({p75:1},'')}catch(e){}paint()}
+function openPay(t){pull().then(c=>{if(c&&$('pay75'))paint()});if(t)tab=t;if(!D.pix.length&&D.wa.length&&!t)tab='wa';let o=$('pay75');if(o)o.remove();o=document.createElement('div');o.id='pay75';document.body.appendChild(o);try{history.pushState({p75:1},'')}catch(e){}paint()}
 const closePay=()=>{const o=$('pay75');if(o)o.remove()};
 addEventListener('popstate',closePay);
 const curVal=()=>parseFloat(String(val).replace(/\./g,'').replace(',','.'))||0,
@@ -154,9 +177,9 @@ async function paint(){const o=$('pay75');if(!o)return;const my=++pt,L=D[tab],n=
  o.style.background=th?`radial-gradient(circle at 15% 0,${th[2]} 0,transparent 60%),linear-gradient(160deg,${th[2]},${th[3]})`:'';o.style.setProperty('--fg',th?th[4]:'#fff');
  o.innerHTML=`<div class="ph"><button class="pi" data-a="x" aria-label="Fechar">✕</button><div class="pt"><button data-t="pix" class="${tab=='pix'?'on':''}">💳 Pix</button><button data-t="wa" class="${tab=='wa'?'on':''}">WhatsApp</button></div><button class="pi" data-a="ed" aria-label="Editar">⚙</button></div><div class="pb"><div id="pcd" class="pc"></div><div id="sl" class="sl"></div></div>`;
  const c=o.querySelector('#pcd');
- if(!it){c.innerHTML=`<div class="em">${tab=='pix'?'💳':'💬'}<br><b>Nenhum ${tab=='pix'?'Pix':'WhatsApp'} cadastrado</b><br>Toque em ⚙ para cadastrar. Fica salvo neste aparelho e abre sem internet.</div>`;return}
- const fixed=tab=='pix'&&String(it.payload||'').trim().length>20;
- c.innerHTML=`<div id="qh" class="cvw"><div class="em">Montando o cartão…</div></div>${tab=='pix'&&!fixed?'<input class="vl" id="vl" inputmode="decimal" placeholder="Valor (opcional): o QR e o cartão mostram o valor" value="'+E(val)+'">':''}<div class="bt">${tab=='pix'?'<button class="g" data-a="ck">📋 Copiar chave</button><button class="o" data-a="cp">📋 Pix copia e cola</button>':'<button class="g" data-a="cn">📋 Copiar número</button><a class="w" href="'+E(waLink(it))+'" target="_blank" rel="noopener">💬 Abrir conversa</a>'}<button class="g" data-a="sv">🖼 Salvar imagem</button><button class="g" data-a="sh">📤 Compartilhar</button></div>`;
+ if(!it){c.innerHTML=`<div class="em">${tab=='pix'?'💳':'💬'}<br><b>Nenhum ${tab=='pix'?'Pix':'WhatsApp'} cadastrado</b><br>Toque em ⚙ para cadastrar. Fica salvo na sua conta e abre sem internet.</div>`;return}
+ const fixed=tab=='pix'&&!it.chave&&String(it.payload||'').trim().length>20;if(it.id!==paint._id){paint._id=it.id;showOv=null;val=''}
+ c.innerHTML=`<div id="qh" class="cvw"><div class="em">Montando o cartão…</div></div>${tab=='pix'&&!fixed?'<input class="vl" id="vl" inputmode="decimal" placeholder="Valor (opcional): com valor, o QR já vem com o valor; sem valor, é só a sua chave" value="'+E(val)+'">':''}<div class="bt">${tab=='pix'?(it.chave&&shown(it)?'<button class="g" data-a="ck">📋 Copiar chave</button>':'')+'<button class="o" data-a="cp">📋 Pix copia e cola</button>'+(it.chave?'<button class="g" data-a="tk">'+(shown(it)?'🙈 Ocultar chave':'👁 Mostrar chave')+'</button>':''):'<button class="g" data-a="cn">📋 Copiar número</button><a class="w" href="'+E(waLink(it))+'" target="_blank" rel="noopener">💬 Abrir conversa</a>'}<button class="g" data-a="sv">🖼 Salvar imagem</button><button class="g" data-a="sh">📤 Compartilhar</button></div>`;
  const draw=async()=>{const t=++ct;let cv;try{cv=await(tab=='pix'?cardPix(it,curVal()):cardWa(it))}catch(e){return}if(t!=ct||my!=pt)return;cur=cv;cv.style.cssText='width:100%;height:auto;display:block;border-radius:22px;box-shadow:0 18px 50px #0006';const h=c.querySelector('#qh');h.classList.remove('cvw');h.innerHTML='';h.appendChild(cv)};
  await logosReady();if(my!=pt)return;
  const sl=o.querySelector('#sl');if(n>1)sl.innerHTML=L.map((x,k)=>`<button data-a="go" data-i="${k}" class="${k==i?'on':''}">${tab=='pix'?badge(x.banco,30):WA(30)}<span class="t">${E(tab=='pix'?(x.rotulo||bk(x.banco)[1]):(x.rotulo||x.nome||'WhatsApp'))}</span></button>`).join('');
@@ -167,7 +190,7 @@ document.addEventListener('click',async e=>{const o=$('pay75');if(!o||!o.contain
  if(t.dataset.t){tab=t.dataset.t;paint();return}const a=t.dataset.a,it=D[tab][idx[tab]],n=D[tab].length;
  if(a=='x'){closePay();try{if(history.state&&history.state.p75)history.back()}catch(x){}}
  else if(a=='ed')manager();else if(a=='go'){idx[tab]=+t.dataset.i;paint()}
- else if(a=='ck')copy(fkey(it)||'','Chave copiada');else if(a=='cp')copy(brcode(it,curVal()),'Pix copia e cola copiado');else if(a=='cn')copy(waNum(it.numero),'Número copiado');
+ else if(a=='tk'){showOv=!shown(it);paint()}else if(a=='ck')copy(fkey(it)||'','Chave copiada');else if(a=='cp')copy(brcode(it,curVal()),'Pix copia e cola copiado');else if(a=='cn')copy(waNum(it.numero),'Número copiado');
  else if(a=='sv'||a=='sh'){const b=await blobOf();if(!b){tst('Aguarde o cartão carregar');return}const nm=(tab=='pix'?'pix-':'whatsapp-')+slug(it.rotulo||it.nome||(it.banco&&bk(it.banco)[1]))+'.png';
   if(a=='sh'){try{const f=new File([b],nm,{type:'image/png'});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:it.rotulo||'Pix'});return}}catch(x){if(x&&x.name=='AbortError')return}tst('Este aparelho não compartilha imagem: salvando')}
   const u=URL.createObjectURL(b),l=document.createElement('a');l.href=u;l.download=nm;document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);if(a=='sv')tst('Imagem salva')}});
@@ -177,9 +200,9 @@ document.addEventListener('click',async e=>{const o=$('pay75');if(!o||!o.contain
 /* ---------- cadastro ---------- */
 const mod=(t,h)=>{const m=document.createElement('div');m.className='modal full';m.style.zIndex=9500;m.innerHTML=`<div style="max-width:520px"><div class="flex items-center gap-2"><h3 class="text-xl font-extrabold">${t}</h3><button class="btn ghost ml-auto" data-x>✕</button></div><div data-b>${h}</div></div>`;m.addEventListener('click',e=>{if(e.target===m||e.target.hasAttribute('data-x'))m.remove()});document.body.appendChild(m);return m},
 emp=()=>{try{return JSON.parse(localStorage.getItem('dce_emp71'))||{}}catch(e){return{}}};
-function manager(){document.querySelectorAll('.m75').forEach(x=>x.remove());const e=emp(),
+function manager(){if(!manager._p){manager._p=1;pull().then(c=>{manager._p=0;if(c&&document.querySelector('.m75:not(.f75)'))manager()})}document.querySelectorAll('.m75').forEach(x=>x.remove());const e=emp(),
  row=(k,it)=>`<div class="qcc" style="display:flex;align-items:center;gap:10px;margin-top:8px">${k=='pix'?badge(it.banco,40):WA(40)}<div style="flex:1;min-width:0"><b style="word-break:break-word">${E(it.rotulo||it.nome||'Sem nome')}</b><div class="text-xs" style="color:#64748b;word-break:break-all">${k=='pix'?E(bk(it.banco)[1]+' • '+(it.nome||'')+(it.chave?' • '+it.chave:'')):E((it.nome?it.nome+' • ':'')+waFmt(it.numero))}</div></div><button class="btn ghost" data-ed="${k}:${it.id}">✏️</button><button class="btn danger" data-rm="${k}:${it.id}">🗑</button></div>`;
- const m=mod('💳 Pix e WhatsApp',`<p class="text-xs" style="color:#64748b">Fica salvo neste aparelho (e na sua conta, se estiver logado). A apresentação abre sem internet e pega as cores e a logo do banco.</p>
+ const m=mod('💳 Pix e WhatsApp',`<p class="text-xs" style="color:#64748b">Fica salvo na sua conta (aparece em qualquer aparelho) e também neste aparelho para abrir sem internet. A apresentação abre sem internet e pega as cores e a logo do banco.</p>
  <b class="text-sm block mt-3">Pix (${D.pix.length})</b>${D.pix.map(x=>row('pix',x)).join('')}<button class="btn ghost w-full mt-2" data-add="pix">＋ Adicionar Pix</button>
  <b class="text-sm block mt-4">WhatsApp (${D.wa.length})</b>${D.wa.map(x=>row('wa',x)).join('')}<button class="btn ghost w-full mt-2" data-add="wa">＋ Adicionar WhatsApp</button>
  ${(!D.pix.length&&e.pix)||(!D.wa.length&&e.tel)?'<button class="btn ghost w-full mt-4" data-imp>↧ Usar dados da aba Empresa</button>':''}
@@ -194,16 +217,16 @@ function manager(){document.querySelectorAll('.m75').forEach(x=>x.remove());cons
   if(await yes('Remover este item?')){D[k]=D[k].filter(x=>x.id!=id);await save();manager()}})}
 const sel=(id,l,a,v)=>`<label>${l}<select class="in mt-1" id="${id}">${a.map(x=>`<option value="${x[0]}" ${x[0]==v?'selected':''}>${E(x[1])}</option>`).join('')}</select></label>`,
 fld=(id,l,v,ex='')=>`<label>${l}<input class="in mt-1" id="${id}" value="${E(v)}" ${ex}></label>`;
-function form(k,it){const n=!it,e=emp();it=it||(k=='pix'?{id:uid(),banco:'nu',rotulo:'',nome:e.nome||'',tipo:'cpf',chave:'',cidade:'',payload:''}:{id:uid(),rotulo:'WhatsApp',nome:e.nome||'',numero:e.tel||'',msg:''});let selB=it.banco||'nu';
+function form(k,it){const n=!it,e=emp();it=it||(k=='pix'?{id:uid(),banco:'nu',rotulo:'',nome:e.nome||'',tipo:'cpf',chave:'',cidade:'',payload:'',mostrar:true}:{id:uid(),rotulo:'WhatsApp',nome:e.nome||'',numero:e.tel||'',msg:''});let selB=it.banco||'nu';
  const m=mod(n?(k=='pix'?'＋ Novo Pix':'＋ Novo WhatsApp'):'✏️ Editar',k=='pix'?
- `<label>Banco</label><div id="f_bg" class="bg75"></div>${fld('f_r','Como aparece (ex.: Pix da loja, Pix pessoal)',it.rotulo)}${fld('f_n','Nome do titular (como aparece no banco)',it.nome,'maxlength="25"')}<div class="grid grid-cols-2 gap-2">${sel('f_t','Tipo de chave',[['cpf','CPF'],['cnpj','CNPJ'],['tel','Celular'],['mail','E-mail'],['aleat','Chave aleatória']],it.tipo)}${fld('f_k','Chave Pix',it.chave)}</div>${fld('f_c','Cidade (para o QR)',it.cidade,'maxlength="15" placeholder="Ex.: Bauru"')}<label>Pix copia e cola (opcional)<textarea class="in mt-1" id="f_p" rows="3" placeholder="Se você já tem o código do seu banco, cole aqui. Senão o QR é gerado pela chave.">${E(it.payload)}</textarea></label><p id="f_e" class="text-sm min-h-[20px]" style="color:#b42318"></p>`:
+ `<label>Banco</label><div id="f_bg" class="bg75"></div>${fld('f_r','Como aparece (ex.: Pix da loja, Pix pessoal)',it.rotulo)}${fld('f_n','Nome do titular (como aparece no banco)',it.nome,'maxlength="25"')}<div class="grid grid-cols-2 gap-2">${sel('f_t','Tipo de chave',[['cpf','CPF'],['cnpj','CNPJ'],['tel','Celular'],['mail','E-mail'],['aleat','Chave aleatória']],it.tipo)}${fld('f_k','Chave Pix',it.chave)}</div>${fld('f_c','Cidade (para o QR)',it.cidade,'maxlength="15" placeholder="Ex.: Bauru"')}<label style=\"display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer\"><input type=\"checkbox\" id=\"f_s\" ${it.mostrar!==false?'checked':''} style=\"width:18px;height:18px;accent-color:#f26b21\"> Mostrar a chave no cartão (se desmarcar, só o QR Code aparece)</label><label>Pix copia e cola (opcional)<textarea class="in mt-1" id="f_p" rows="3" placeholder="Se você já tem o código do seu banco, cole aqui. Senão o QR é gerado pela chave.">${E(it.payload)}</textarea></label><p id="f_e" class="text-sm min-h-[20px]" style="color:#b42318"></p>`:
  `${fld('f_r','Como aparece (ex.: Orçamentos, Suporte)',it.rotulo)}${fld('f_n','Seu nome / empresa',it.nome)}${fld('f_k','Número com DDD',it.numero,'type="tel" inputmode="tel" placeholder="14 99999-9999"')}${fld('f_m','Mensagem inicial (opcional)',it.msg,'placeholder="Olá! Vim pelo cartão de visita."')}<p id="f_e" class="text-sm min-h-[20px]" style="color:#b42318"></p>`);
  m.classList.add('m75','f75');const g=i=>m.querySelector('#'+i);
  if(k=='pix'){const gd=()=>{g('f_bg').innerHTML=BK.map(b=>`<button type="button" data-b="${b[0]}" class="${b[0]==selB?'on':''}">${badge(b[0],40)}<span>${E(b[1])}</span></button>`).join('')};gd();
   g('f_bg').onclick=ev=>{const t=ev.target.closest('[data-b]');if(!t)return;selB=t.dataset.b;gd()};if(!lgDone)logosReady().then(()=>{if(document.body.contains(m))gd()})}
  const ok=document.createElement('button');ok.className='btn or w-full mt-2 py-3';ok.textContent='Salvar';m.querySelector('[data-b]').appendChild(ok);
  ok.onclick=async()=>{const er=g('f_e');er.textContent='';
-  if(k=='pix'){const o={id:it.id,banco:selB,rotulo:g('f_r').value.trim(),nome:g('f_n').value.trim(),tipo:g('f_t').value,chave:g('f_k').value.trim(),cidade:g('f_c').value.trim(),payload:g('f_p').value.trim()};
+  if(k=='pix'){const o={id:it.id,banco:selB,rotulo:g('f_r').value.trim(),nome:g('f_n').value.trim(),tipo:g('f_t').value,chave:g('f_k').value.trim(),cidade:g('f_c').value.trim(),payload:g('f_p').value.trim(),mostrar:g('f_s').checked};
    if(!o.nome){er.textContent='Informe o nome do titular.';return}if(!o.chave&&o.payload.length<20){er.textContent='Informe a chave Pix ou cole o Pix copia e cola.';return}
    if(!o.chave&&o.payload.length>=20){const mm=o.payload.match(/0014br\.gov\.bcb\.pix01(\d{2})/i);if(mm){const l=+mm[1],s=o.payload.indexOf(mm[0])+mm[0].length;o.chave=o.payload.substr(s,l);
     const kk=o.chave,dd=kk.replace(/\D/g,'');o.tipo=kk.includes('@')?'mail':/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(kk)?'aleat':kk[0]=='+'?'tel':dd.length==14&&dd==kk?'cnpj':dd.length==11&&dd==kk?'cpf':o.tipo}}
