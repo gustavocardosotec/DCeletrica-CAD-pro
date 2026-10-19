@@ -1,6 +1,6 @@
-/* DC CAD Pro v9.0 alfa — celular.js: fecha menus ao tocar fora (junto do ajuste de celular)
+/* DC CAD Pro v9.0.1 — celular.js: fecha menus ao tocar fora (junto do ajuste de celular)
    (bloco movido do index.html sem nenhuma alteração de lógica) */
-document.addEventListener('pointerdown',e=>{if(!e.target.closest('.grp'))document.querySelectorAll('.grp.open').forEach(g=>g.classList.remove('open'))},true)
+document.addEventListener('pointerdown',e=>{if(!e.target.closest('.grp'))document.querySelectorAll('.grp.open').forEach(g=>g.classList.remove('open'))},true);
 (()=>{const R=document.documentElement,mq=matchMedia('(max-width:820px)'),co=matchMedia('(pointer:coarse)'),G=id=>document.getElementById(id);let was=null;
 function fit(){const w=innerWidth,h=innerHeight,m=mq.matches||(co.matches&&Math.min(w,h)<600);R.classList.toggle('mob',m);R.classList.toggle('land',m&&w>h);R.style.setProperty('--vh',h/100+'px');const c=was!==null&&was!==m;was=m;if(c)dispatchEvent(new Event('resize'))}
 addEventListener('resize',fit);addEventListener('orientationchange',()=>setTimeout(fit,250));fit();

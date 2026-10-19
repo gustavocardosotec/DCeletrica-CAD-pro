@@ -584,7 +584,7 @@ addEventListener('pagehide',flush);document.addEventListener('visibilitychange',
 /* ===== Feedback (v3.2) ===== */
 const dev=()=>{const u=navigator.userAgent,b=/Edg\//.test(u)?'Edge':/OPR\//.test(u)?'Opera':/Firefox\//.test(u)?'Firefox':/Chrome\//.test(u)?'Chrome':/Safari\//.test(u)?'Safari':'Outro',o=/Android/.test(u)?'Android':/iPhone|iPad/.test(u)?'iOS':/Windows/.test(u)?'Windows':/Mac OS/.test(u)?'macOS':/Linux/.test(u)?'Linux':'';return b+(o?' • '+o:'')};
 /* VERSÃO: ao lançar, suba VER aqui, V no sw.js e adicione o card nas Novidades (modal #mNv, neste arquivo) */
-const VER='9.0 alfa',TF={erro:'🐞 Erro',ideia:'💡 Ideia',elogio:'👏 Elogio'};
+const VER='9.0.1 alfa',TF={erro:'🐞 Erro',ideia:'💡 Ideia',elogio:'👏 Elogio'};
 const FH=()=>({apikey:CFG.key,Authorization:'Bearer '+(ses&&ses.access_token&&ses.access_token!='local'?ses.access_token:CFG.key),'Content-Type':'application/json'});
 $('bFb').onclick=$('bFb2').onclick=()=>{$('fbm').value='';$('fbn').value=ses&&ses.access_token!='local'&&ses.user&&ses.user.email?nomeAut():'';$('fbe').textContent='';$('mFb').classList.remove('hidden')};
 $('fbx').onclick=()=>$('mFb').classList.add('hidden');

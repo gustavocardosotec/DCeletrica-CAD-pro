@@ -51,7 +51,7 @@ inp.onkeydown=e=>{if(e.key=='Enter')send()};
 function chat(v){const open=v===undefined?ch.classList.contains('hidden'):v;ch.classList.toggle('hidden',!open);try{localStorage.setItem('dce_ch73',open?'1':'0')}catch(e){}
  if(open){hello();const t=$('tp71');if(t&&document.documentElement.classList.contains('mob'))t.classList.add('hidden');setTimeout(()=>{if(!matchMedia('(pointer:coarse)').matches)inp.focus()},80)}setTimeout(()=>dispatchEvent(new Event('resize')),30)}
 window.chat73=chat;$('bCh').onclick=()=>chat();
-try{if(localStorage.getItem('dce_ch73')=='1'&&!document.documentElement.classList.contains('mob'))chat(true)}catch(e){}
+/* v9.0.1: o ChatDC é um painel flutuante e só abre quando você pede (não ocupa mais o desenho ao entrar) */
 
 /* ================= Fechamento de caixas ================= */
 const FX=['cx','luz','tb','tm','ta','td','is','i3','i4','tue'],CLR={PE:'#16a34a',N:'#38bdf8',F:'#1f2937',R:'#eab308'};

@@ -1,0 +1,199 @@
+/* DC CAD Pro v9.0.1 — editor.css: novo layout da tela do editor (PC e celular)
+   Ideia: o desenho ocupa quase toda a tela. Tudo o resto fica em 4 lugares fixos:
+   barra superior (projeto e ações), trilho de ferramentas (esquerda no PC / embaixo no celular),
+   painéis flutuantes (ferramentas, ChatDC, propriedades) e barra de status (PC).
+   Este arquivo vem DEPOIS de estilo.css e celular.css de propósito. */
+
+:root{--rail:#0f2a43;--rail2:#16405f;--paper:#f4f6f9;--rw:64px;--topH:52px;--sbH:30px}
+
+/* ---------- esconde o cabeçalho e a barra antigos (os botões foram movidos para o layout novo) ---------- */
+html #vE>.eh,html #vE>#tb{display:none!important}
+html #vE:not(.hidden){display:flex;flex-direction:column}
+#wk71{position:relative;background:var(--paper)}
+#vE main{background:#fff}
+.pres #eui-top,.pres #eui-rail,.pres #eui-sb,.pres #eui-dock,.pres #eui-more{display:none!important}
+
+/* ======================= BARRA SUPERIOR ======================= */
+#eui-top{flex:none;display:flex;align-items:center;gap:10px;height:var(--topH);padding:0 12px;background:#fff;border-bottom:1px solid var(--ln);position:relative;z-index:30}
+#eui-top .eg{display:flex;align-items:center;gap:4px;min-width:0}
+#eui-top .eg-l{flex:1 1 auto}
+#eui-top .eg-c,#eui-top .eg-r{flex:none}
+#eui-top .dv{flex:none;width:1px;height:22px;background:var(--ln);margin:0 6px}
+#eui-top .eb{flex:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;min-width:36px;padding:0 9px;border:0;border-radius:10px;background:transparent;color:var(--navy);font-size:15px;font-weight:600;box-shadow:none;position:relative}
+#eui-top .eb:hover{background:#eef3f8}
+#eui-top .eb:active{transform:none;background:#e3ebf4}
+#eui-top .eb.on{background:#fde9dc;color:var(--or2)}
+#eui-top .eb .lb{display:none;font-size:13px}
+#eui-top .eb.lab .lb{display:inline}
+#eui-top .eb.sec{border:1px solid var(--ln);background:#fff}
+#eui-top .eb.sec:hover{background:#eef3f8}
+#eui-top .eb.pri{background:var(--or);color:#fff;padding:0 14px}
+#eui-top .eb.pri:hover{background:var(--or2)}
+#eui-top .eb.pri .lb{display:inline}
+#eui-top .eb.sec .lb{display:inline}
+#eui-top #nm{flex:1 1 180px;min-width:90px;max-width:300px;height:36px;padding:0 10px;border:1px solid transparent;border-radius:10px;background:transparent;font-size:15px;font-weight:700;color:var(--navy);text-overflow:ellipsis;box-shadow:none}
+#eui-top #nm:hover{background:var(--paper)}
+#eui-top #nm:focus{background:#fff;border-color:var(--or);box-shadow:0 0 0 3px #f26b2133}
+#eui-top #bBk{font-size:18px}
+#eui-top .sp.has:after{top:5px;right:5px}
+/* "mais" (⋯) também aparece no PC */
+#eui-top #bMoreE{display:inline-flex!important;font-size:20px;letter-spacing:1px}
+
+/* ======================= TRILHO DE FERRAMENTAS ======================= */
+#eui-rail{flex:none;display:flex;flex-direction:column;align-items:center;width:var(--rw);background:var(--rail);padding:10px 0;gap:6px;z-index:28;overflow:hidden}
+#eui-rail .er-main{flex:none;display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;padding:0 6px}
+#eui-rail .er-quick{flex:1 1 auto;min-height:0;width:100%;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;padding:8px 0 4px;border-top:1px solid #ffffff22;border-bottom:1px solid #ffffff22}
+#eui-rail .er-quick::-webkit-scrollbar{display:none}
+#eui-rail .er-end{flex:none;display:flex;flex-direction:column;align-items:center;gap:2px;width:100%;padding:0 4px}
+#eui-rail #qk71{display:flex;flex-direction:column;align-items:center;gap:6px}
+#eui-rail .q71{width:42px;height:42px;border:2px solid transparent;border-radius:12px;background:#fff;font-size:20px;box-shadow:0 1px 0 #0003;transition:transform .1s,border-color .15s}
+#eui-rail .q71:hover{transform:translateY(-1px)}
+#eui-rail .q71.on{border-color:var(--or);box-shadow:0 0 0 3px #f26b2155}
+/* botão grande "Ferramentas" */
+#eui-rail #bt71{width:52px;min-height:52px;height:auto;flex-direction:column;gap:2px;padding:6px 2px;border-radius:14px;background:var(--or);color:#fff;font-size:20px;line-height:1;box-shadow:0 6px 16px #f26b2155}
+#eui-rail #bt71 .lb{display:block;font-size:9.5px;font-weight:700;margin:0}
+#eui-rail #bt71:hover{background:var(--or2)}
+#eui-rail #bt71.on{background:#fff;color:var(--or2);box-shadow:0 0 0 3px #f26b2199}
+/* botões de baixo (Desenho, Avançado, ChatDC) */
+#eui-rail .er-b{background:transparent;border:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:56px;min-height:46px;border-radius:12px;color:#d6e2ee;font-size:10.5px;font-weight:600;line-height:1.1;position:relative}
+#eui-rail .er-b i{font-style:normal;font-size:20px;line-height:1}
+#eui-rail .er-b:hover{background:var(--rail2);color:#fff}
+#eui-rail .er-b.on{background:#ffffff1f;color:#fff}
+#eui-rail .er-b.fit{display:none}
+#eui-rail .er-b.has:after{content:"";position:absolute;top:6px;right:10px;width:9px;height:9px;border-radius:9px;background:#e11d48;border:2px solid var(--rail)}
+
+/* ======================= PAINEL DE FERRAMENTAS ======================= */
+#tp71{background:#fff}
+#tp71 .tph{align-items:center;padding-bottom:8px}
+#tp71 .tph .btn{flex:none;min-width:40px;min-height:40px;padding:0 10px}
+#tp71 #tpin71.on{background:#fde9dc;border-color:var(--or)}
+#trec71{display:none;margin:2px 0 6px}
+#trec71.has{display:block}
+#trec71 h5,#tp71 .grp>.tb{margin:0;font-size:12px;font-weight:800;letter-spacing:0;text-transform:none;color:var(--navy)}
+#trec71 h5{padding:6px 2px 6px}
+#trec71 .rr{display:flex;flex-wrap:wrap;gap:6px}
+#trec71 .rc71{background:#fff;display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:3px 10px 3px 6px;border:1px solid var(--ln);border-radius:10px;background:#fff;font-size:12px;font-weight:600;color:var(--navy)}
+#trec71 .rc71:hover{border-color:var(--or);background:#fff7f1}
+#tp71 .grp>.tb{padding:12px 2px 6px;background:none;border:0;border-radius:0;box-shadow:none;text-align:left;width:auto}
+#tp71 .it{border-radius:10px}
+#tp71 .it:hover{border-color:var(--or)}
+/* PC: painel vira uma janela flutuante sobre o desenho; "fixar" volta a empurrar o desenho */
+html:not(.mob) #tp71{position:absolute;left:calc(var(--rw) + 8px);top:8px;bottom:8px;width:300px;height:auto;border:1px solid var(--ln);border-radius:16px;box-shadow:0 18px 50px #0f2a4338;z-index:26;padding:10px}
+html:not(.mob) #tp71.pin{position:relative;left:auto;top:auto;bottom:auto;height:auto;width:292px;border-width:0 1px 0 0;border-radius:0;box-shadow:none;z-index:9}
+html:not(.mob) #tp71.hidden{display:none}
+
+/* ======================= CHATDC FLUTUANTE ======================= */
+html:not(.mob) #ch73{position:absolute;right:14px;bottom:14px;width:372px;height:min(580px,calc(100% - 28px));max-height:none;border:1px solid var(--ln);border-radius:18px;box-shadow:0 18px 50px #0f2a4340;z-index:24}
+html:not(.mob) #ch73.hidden{display:none}
+#ch73 .h73{background:var(--navy);color:#fff;border-bottom:0}
+#ch73 .h73 small{color:#9fb6cc}
+#ch73 .h73 .btn{background:#ffffff1f;color:#fff;border:0;min-width:36px;min-height:36px;padding:0 8px}
+#ch73 .h73 .btn:hover{background:#ffffff38}
+
+/* ======================= PAINÉIS SOBRE O DESENHO ======================= */
+#rc{top:12px;left:12px;min-width:0;max-width:240px;padding:8px 12px;border-radius:12px;background:rgba(255,255,255,.9)}
+#rc .rch b{font-size:12px}
+#pp{border-radius:16px;box-shadow:0 14px 40px #0f2a4333;top:12px!important;right:12px!important}
+html:not(.mob) #mm{left:12px!important;right:auto!important;bottom:12px!important;width:140px!important;height:96px!important;border-radius:12px!important;opacity:.95}
+@media(max-height:660px){html:not(.mob) #mm{display:none!important}}
+#lib{bottom:120px!important}
+#arb{top:calc(var(--topH) + 10px)}
+.mob #arb{top:calc(56px + env(safe-area-inset-top))}
+
+/* botões "Inserir no centro" e "Concluir" ficam juntos, no centro, embaixo do desenho */
+#eui-dock{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:12;display:flex;gap:8px;align-items:center;pointer-events:none;max-width:96%}
+html #eui-dock #bAd,html #eui-dock #bEnd{position:static!important;transform:none!important;left:auto!important;right:auto!important;bottom:auto!important;pointer-events:auto;min-height:44px;padding:0 20px;border-radius:99px;box-shadow:0 10px 26px #0f2a4340;font-size:14px}
+html #eui-dock #bEnd{background:#fff;color:var(--navy);border:1px solid var(--ln)}
+
+/* ======================= BARRA DE STATUS (só PC) ======================= */
+#eui-sb{flex:none;display:flex;align-items:center;gap:14px;height:var(--sbH);padding:0 12px;background:var(--paper);border-top:1px solid var(--ln);font-size:12px;color:var(--mut);z-index:20}
+#eui-sb #hint{position:static!important;flex:1 1 auto;min-width:0;max-width:none!important;padding:0!important;border:0;border-radius:0;background:none;box-shadow:none;pointer-events:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;color:#475569}
+#eui-sb .sbr{flex:none;display:flex;align-items:center;gap:10px}
+#eui-sb .stt{display:inline!important;margin:0!important;padding:0!important;font-size:12px;max-width:34vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#eui-sb #cl7{margin:0!important}
+#eui-sb .text-xs{margin:0!important}
+#eui-sb .zm{display:flex;align-items:center;gap:2px}
+#eui-sb .zm button{border:0;display:grid;place-items:center;min-width:26px;height:24px;padding:0 6px;border-radius:7px;background:transparent;color:var(--navy);border:0;box-shadow:none;font-size:14px;font-weight:700}
+#eui-sb .zm button:hover{background:#e3ebf4}
+#eui-sb .zm #eui-zv{min-width:48px;font-size:12px;font-variant-numeric:tabular-nums}
+
+/* ======================= MENU "MAIS" ======================= */
+#eui-more{position:fixed;inset:0;z-index:92}
+#eui-more .sh{position:absolute;top:calc(var(--topH) + 6px);right:12px;width:300px;max-height:calc(100dvh - var(--topH) - 24px);overflow:auto;background:#fff;border:1px solid var(--ln);border-radius:16px;box-shadow:0 18px 50px #0f2a4340;padding:6px}
+#eui-more .gp,#eui-more h4{display:none}
+#eui-more h5{margin:0;padding:10px 12px 4px;font-size:12px;font-weight:800;color:var(--mut)}
+#eui-more .row{display:flex;flex-direction:column}
+#eui-more .mi{border:0;background:transparent;position:relative;display:flex;align-items:center;gap:12px;width:100%;min-height:42px;padding:6px 12px;border-radius:10px;font-size:14px;font-weight:600;color:var(--navy);text-align:left}
+#eui-more .mi:hover{background:#eef3f8}
+#eui-more .mi i{font-style:normal;width:22px;text-align:center;font-size:17px}
+#eui-more .mi.has:after{content:"";margin-left:auto;width:10px;height:10px;border-radius:10px;background:#e11d48}
+#eui-more hr{border:0;border-top:1px solid var(--ln);margin:4px 8px}
+/* janelas de menu das ferramentas avançadas e do desenho: centralizadas no PC */
+@media(min-width:821px){html:not(.mob) #mSh{align-items:center;justify-content:center}html:not(.mob) #mSh>div{border-radius:20px;max-width:600px;padding-top:14px}html:not(.mob) #mSh .gp{display:none}}
+
+/* ======================= CELULAR ======================= */
+html.mob{--topH:50px}
+html.mob #eui-top{gap:6px;height:auto;min-height:var(--topH);padding:calc(4px + env(safe-area-inset-top)) 8px 4px;box-shadow:0 2px 10px #0f2a430f}
+html.mob #eui-top .dv,html.mob #eui-top #bVw,html.mob #eui-top #bQd,html.mob #eui-top #bDc,html.mob #eui-top #bCalc,html.mob #eui-top #bSh,html.mob #eui-top #bSv,html.mob #eui-top #bRd{display:none!important}
+html.mob #eui-top .eb{height:42px;min-width:42px;font-size:19px}
+html.mob #eui-top #nm{flex:1 1 auto;max-width:none;min-width:0;height:42px;font-size:16px}
+html.mob #eui-top .eg-r{gap:2px}
+html.mob #eui-top #bGe{padding:0 12px;font-size:15px}
+html.mob #eui-top #bGe .lb{display:none}
+html.mob #eui-top #bGe:after{content:"Gerar";font-size:14px;margin-left:5px;font-weight:700}
+html.mob #eui-sb{display:none}
+html.mob #mm,html.mob #rc{display:none}
+
+/* trilho vira barra de baixo */
+html.mob #wk71{padding-bottom:calc(62px + env(safe-area-inset-bottom))}
+html.mob #eui-rail{position:fixed;left:0;right:0;bottom:0;width:auto;height:auto;flex-direction:row;align-items:center;justify-content:space-around;gap:0;padding:6px 6px calc(6px + env(safe-area-inset-bottom));border-radius:20px 20px 0 0;box-shadow:0 -8px 28px #0f2a4340;z-index:36;overflow:visible}
+html.mob #eui-rail .er-main,html.mob #eui-rail .er-quick,html.mob #eui-rail .er-end,html.mob #eui-rail #qk71{display:contents}
+html.mob #eui-rail .q71{width:50px;height:46px;border-radius:14px;order:1}
+html.mob #eui-rail .q71:nth-child(2){order:2}
+html.mob #eui-rail .q71:nth-child(n+3){display:none}
+html.mob #eui-rail #bt71{order:3;width:68px;min-height:56px;margin-top:-22px;border-radius:20px;border:4px solid #fff;box-shadow:0 8px 20px #f26b2166;font-size:22px}
+html.mob #eui-rail #bt71.on{border-color:#fde9dc}
+html.mob #eui-rail .er-b{order:4;width:56px;min-height:46px;font-size:10px}
+html.mob #eui-rail .er-b[data-p=b72],html.mob #eui-rail .er-b[data-p=b7]{display:none}
+html.mob #eui-rail .er-b.fit{display:flex;order:4}
+html.mob #eui-rail .er-b[data-p=bCh]{order:5}
+html.mob #eui-dock{bottom:calc(76px + env(safe-area-inset-bottom))}
+html.mob #tp71{bottom:calc(68px + env(safe-area-inset-bottom))!important;z-index:70}
+html.mob #ch73{bottom:calc(68px + env(safe-area-inset-bottom))!important;z-index:70}
+html.mob #pp{z-index:75}
+/* menu "mais" como folha de baixo */
+html.mob #eui-more{background:#0f2a4399;display:flex;align-items:flex-end}
+html.mob #eui-more .sh{position:static;width:100%;max-height:82dvh;border:0;border-radius:22px 22px 0 0;padding:8px 14px calc(18px + env(safe-area-inset-bottom));box-shadow:none;animation:msu .2s ease-out}
+html.mob #eui-more .gp{display:block;width:42px;height:5px;border-radius:9px;background:#cbd5e1;margin:4px auto 6px}
+html.mob #eui-more h4{display:block;margin:0 2px 4px;font-size:15px;font-weight:800;color:var(--navy);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html.mob #eui-more .row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+html.mob #eui-more .mi{flex-direction:column;justify-content:center;gap:6px;min-height:80px;padding:10px 4px;border-radius:16px;background:#f1f5f9;border:0;font-size:12.5px;text-align:center;line-height:1.15}
+html.mob #eui-more .mi i{font-size:26px;width:auto}
+html.mob #eui-more .mi.has:after{position:absolute;top:8px;right:14px;margin:0;border:2px solid #fff}
+html.mob #eui-more hr{display:none}
+
+/* celular deitado: trilho vertical na esquerda para sobrar altura para o desenho */
+html.mob.land{--topH:44px}
+html.mob.land #eui-top{padding-top:calc(2px + env(safe-area-inset-top));padding-bottom:2px}
+html.mob.land #eui-top .eb,html.mob.land #eui-top #nm{height:38px}
+html.mob.land #wk71{padding-bottom:0}
+html.mob.land #eui-rail{position:static;flex:none;width:58px;height:auto;flex-direction:column;justify-content:flex-start;gap:6px;padding:8px 0;border-radius:0;box-shadow:none;overflow-y:auto}
+html.mob.land #eui-rail .er-main,html.mob.land #eui-rail .er-quick,html.mob.land #eui-rail .er-end,html.mob.land #eui-rail #qk71{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;padding:0}
+html.mob.land #eui-rail .er-quick{flex:none;border:0}
+html.mob.land #eui-rail #bt71{margin-top:0;width:48px;min-height:48px;border:0}
+html.mob.land #eui-rail .q71{width:42px;height:40px}
+html.mob.land #eui-rail .er-b{width:50px}
+html.mob.land #eui-dock{bottom:12px}
+html.mob.land #tp71{bottom:8px!important;left:66px!important;right:auto!important;width:min(320px,60vw)!important;top:8px!important;max-height:none!important;border-radius:16px!important}
+html.mob.land #ch73{bottom:8px!important;left:auto!important;right:8px!important;width:min(380px,60vw)!important;height:calc(100% - 16px)!important;border-radius:16px!important}
+
+@media(prefers-reduced-motion:reduce){#eui-more .sh{animation:none!important}}
+
+/* ======================= AJUSTES FINOS POR LARGURA (PC) ======================= */
+#eui-sb .zm .lb{display:none}
+@media(min-width:1380px){html:not(.mob) #eui-top #bQd .lb,html:not(.mob) #eui-top #bDc .lb,html:not(.mob) #eui-top #bCalc .lb,html:not(.mob) #eui-top #bVw .lb{display:inline}}
+@media(max-width:1100px){html:not(.mob) #eui-top #bCalc{display:none}html:not(.mob) #eui-top #nm{flex-basis:120px}}
+@media(max-width:940px){html:not(.mob) #eui-top #bDc,html:not(.mob) #eui-top #bVw{display:none}}
+@media(max-width:1100px){html:not(.mob) #eui-sb .stt{max-width:22vw}}
+
+@media(max-height:720px){html:not(.mob) #eui-rail .q71:nth-child(n+7){display:none}html:not(.mob) #eui-rail .er-b{min-height:42px}html:not(.mob) #eui-rail .er-b i{font-size:18px}}

@@ -1,4 +1,4 @@
-/* DC CAD Pro v9.0 alfa — ferramentas-config.js: painel de ferramentas, configurações da conta/empresa, dashboard de projetos
+/* DC CAD Pro v9.0.1 — ferramentas-config.js: painel de ferramentas, configurações da conta/empresa, dashboard de projetos
    (bloco movido do index.html sem nenhuma alteração de lógica) */
 (()=>{
 const $=id=>document.getElementById(id),LS=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){}return null},J=(k,d)=>{try{return JSON.parse(LS(k))||d}catch(e){return d}};
@@ -7,22 +7,29 @@ const mod=(t,h,w)=>{const m=document.createElement('div');m.className='modal ful
 
 /* ===== Ferramentas: botão + painel com busca + atalhos fixos ===== */
 const tb=$('tb'),main=document.querySelector('#vE main'),tp=document.createElement('div'),wk=document.createElement('div'),MB=()=>document.documentElement.classList.contains('mob');
-tp.id='tp71';tp.innerHTML='<div class="tph"><input id="tq71" class="in" type="search" placeholder="🔍 Buscar ferramenta..."><button id="tx71" class="btn ghost" title="Fechar">✕</button></div><div id="tg71"></div>';wk.id='wk71';main.before(wk);wk.append(tp,main);
+tp.id='tp71';tp.innerHTML='<div class="tph"><input id="tq71" class="in" type="search" placeholder="🔍 Buscar ferramenta..."><button id="tpin71" class="btn ghost" title="Fixar ao lado do desenho">📌</button><button id="tx71" class="btn ghost" title="Fechar">✕</button></div><div id="trec71"></div><div id="tg71"></div>';wk.id='wk71';main.before(wk);wk.append(tp,main);
 const tgc=$('tg71'),IC={sel:'🖱',pan:'✋',room3:'⬜',rect:'▭',wall:'▬',fio:'〰️',cota:'📏',txt:'🔤'};
 const icon=k=>IC[k]||(k.startsWith('lbl:')?'🔤':'•');
 tb.querySelectorAll('.grp').forEach(g=>{const l=g.querySelector('.tl');if(l)l.textContent=l.textContent.replace(/[▾\s]+$/,'').trim();g.querySelectorAll('.it').forEach(b=>{b.title=b.textContent.trim();if(!NM[b.dataset.k]){const i=document.createElement('span');i.className='ic71';i.textContent=icon(b.dataset.k);b.firstChild.replaceWith(i)}});tgc.appendChild(g)});
 tb.classList.add('tb71');tb.innerHTML='<button id="bt71" class="btn or" title="Abrir/fechar ferramentas">🧰<span class="lb">&nbsp;Ferramentas</span></button><span id="cur71"></span><div id="qk71"></div>';
 const fi=k=>[...tgc.querySelectorAll('.it')].find(b=>b.dataset.k==k),rec=()=>J('dce_rec71',[]);
-function sync(){const ks=['sel','pan',...rec().filter(k=>k!='sel'&&k!='pan').slice(0,6)],q=$('qk71');q.innerHTML='';
+const DEF71=['room3','wall','tm','is','luz','fio'];
+function sync(){const r0=rec().filter(k=>k!='sel'&&k!='pan'&&fi(k)),ks=['sel','pan',...r0.concat(DEF71.filter(k=>!r0.includes(k)&&fi(k))).slice(0,6)],q=$('qk71');q.innerHTML='';
  ks.forEach(k=>{const s=fi(k);if(!s)return;const b=document.createElement('button');b.className='q71'+(tool==k?' on':'');b.title=s.title;b.setAttribute('aria-label',s.title);const c=s.querySelector('canvas');
   if(c){const n=document.createElement('canvas');n.width=32;n.height=30;n.getContext('2d').drawImage(c,0,0);b.appendChild(n)}else b.textContent=icon(k);b.onclick=()=>s.click();q.appendChild(b)});
- $('cur71').textContent=tool=='sel'?'Selecionar':(LB[tool]||tool)}
+ $('cur71').textContent=tool=='sel'?'Selecionar':(LB[tool]||tool);
+ const tr=$('trec71'),rr=rec().filter(k=>k!='sel'&&k!='pan'&&fi(k)).slice(0,6);tr.innerHTML='';tr.classList.toggle('has',rr.length>0);
+ if(rr.length){tr.innerHTML='<h5>Usadas recentemente</h5><div class="rr"></div>';const bx=tr.querySelector('.rr');rr.forEach(k=>{const s=fi(k),b=document.createElement('button');b.className='rc71';b.type='button';const c=s.querySelector('canvas');if(c){const n=document.createElement('canvas');n.width=32;n.height=30;n.style.cssText='width:22px;height:21px';n.getContext('2d').drawImage(c,0,0);b.appendChild(n)}else{const i=document.createElement('span');i.textContent=icon(k);b.appendChild(i)}const t=document.createElement('span');t.textContent=s.title;b.appendChild(t);b.onclick=()=>s.click();bx.appendChild(b)})}}
 const _mk=markTool;markTool=function(){_mk.apply(this,arguments);if(tool!='sel'&&tool!='pan'){const r=rec().filter(x=>x!=tool);r.unshift(tool);LS('dce_rec71',JSON.stringify(r.slice(0,8)))}sync()};
-const op=v=>{const h=v===undefined?!tp.classList.contains('hidden'):!v;tp.classList.toggle('hidden',h);$('bt71').classList.toggle('on',!h);if(!MB())LS('dce_tp71',h?'0':'1');setTimeout(()=>dispatchEvent(new Event('resize')),30)};
-$('bt71').onclick=e=>{e.stopPropagation();op()};$('tx71').onclick=()=>op(false);
-tgc.addEventListener('click',e=>{if(e.target.closest('.it')&&MB())op(false)});
+const op=v=>{const h=v===undefined?!tp.classList.contains('hidden'):!v;tp.classList.toggle('hidden',h);$('bt71').classList.toggle('on',!h);if(!h&&!MB())setTimeout(()=>{try{$('tq71').focus()}catch(e){}},60);setTimeout(()=>dispatchEvent(new Event('resize')),30)};
+const pin=v=>{const on=v===undefined?!tp.classList.contains('pin'):!!v;tp.classList.toggle('pin',on);$('tpin71').classList.toggle('on',on);LS('dce_pin71',on?'1':'0');setTimeout(()=>dispatchEvent(new Event('resize')),30)};
+$('bt71').onclick=e=>{e.stopPropagation();op()};$('tx71').onclick=()=>op(false);$('tpin71').onclick=()=>pin();
+/* painel solto (não fixado): fecha ao escolher uma ferramenta ou ao tocar no desenho */
+tgc.addEventListener('click',e=>{if(e.target.closest('.it')&&(MB()||!tp.classList.contains('pin')))op(false)});
+$('trec71').addEventListener('click',e=>{if(e.target.closest('.rc71')&&(MB()||!tp.classList.contains('pin')))op(false)});
+document.addEventListener('pointerdown',e=>{if(tp.classList.contains('hidden')||(tp.classList.contains('pin')&&!MB()))return;if(e.target.closest('#tp71,#bt71,.modal,#mSh,#eui-more'))return;if(e.target.closest('#cv'))op(false)},true);
 $('tq71').oninput=e=>{const q=e.target.value.toLowerCase();tgc.querySelectorAll('.grp').forEach(g=>{let n=0;g.querySelectorAll('.it').forEach(b=>{const v=!q||b.title.toLowerCase().includes(q);b.style.display=v?'':'none';if(v)n++});g.style.display=n?'':'none'})};
-tp.classList.toggle('hidden',MB()||LS('dce_tp71')==='0');$('bt71').classList.toggle('on',!tp.classList.contains('hidden'));sync();
+{const pn=LS('dce_pin71')==='1';tp.classList.toggle('pin',pn);$('tpin71').classList.toggle('on',pn);tp.classList.toggle('hidden',MB()||!pn)}$('bt71').classList.toggle('on',!tp.classList.contains('hidden'));sync();
 
 /* ===== Configurações: abas + empresa ===== */
 const tab=t=>{document.querySelectorAll('#cfTabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));document.querySelectorAll('#mCfg [data-pn]').forEach(p=>p.classList.toggle('on',p.dataset.pn==t));$('mCfg').querySelector('.cfb').scrollTop=0};
